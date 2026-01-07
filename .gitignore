@@ -1,0 +1,7 @@
+# Mengabaikan foto hasil crop agar tidak mengotori repository
+debug_crops/*
+temp_bridge.jpg
+__pycache__/
+
+# Mengabaikan model AI yang gagal jika masih ada sisa download
+.cache/

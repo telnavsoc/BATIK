@@ -1,0 +1,10 @@
+numpy<2.0
+pandas
+opencv-python
+Pillow
+pytesseract
+pygetwindow
+pyautogui
+psutil
+mss
+openpyxl
