@@ -1,6 +1,6 @@
 # FILE: bin/robot_maru.py
 # ================================================================
-# BATIK SYSTEM - MARU ROBOT V3.3 (AUTO-ADMIN & OPTIMIZED)
+# BATIK SYSTEM - MARU ROBOT V3.5 (MANUAL ADMIN CHECK)
 # ================================================================
 
 import sys, os, time, logging, sqlite3, traceback, argparse, ctypes
@@ -10,19 +10,30 @@ from datetime import datetime
 import config
 
 # ================================================================
-# 1. AUTO-ADMIN ELEVATOR (SOLUSI ANTI LUPA)
+# 1. ADMIN CHECK (MODE PASIF)
 # ================================================================
 def is_admin():
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except:
-        return False
+    try: return ctypes.windll.shell32.IsUserAnAdmin()
+    except: return False
 
-if not is_admin():
-    # Jika bukan admin, restart script ini dengan akses admin
-    # Ini akan memunculkan popup Yes/No di Windows
-    ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-    sys.exit()
+if __name__ == "__main__":
+    # JANGAN RESTART OTOMATIS! ITU MEMBUNUH CURTAIN.
+    # Cukup beri peringatan keras jika user lupa.
+    if not is_admin():
+        os.system('cls' if os.name=='nt' else 'clear')
+        print("\n" + "!"*60)
+        print(" [ERROR] AKSES DITOLAK / ACCESS DENIED")
+        print("!"*60)
+        print(" Script ini WAJIB dijalankan sebagai ADMINISTRATOR.")
+        print(" Robot tidak bisa mengetik/klik di aplikasi MARU tanpa izin Admin.")
+        print("-" * 60)
+        print(" SOLUSI:")
+        print(" 1. Tutup Terminal ini.")
+        print(" 2. Klik Kanan VS Code / PowerShell -> 'Run as Administrator'")
+        print(" 3. Jalankan perintah lagi.")
+        print("!"*60 + "\n")
+        time.sleep(5) # Biar user sempat baca
+        sys.exit(1)
 
 # ================================================================
 # SETUP & LOGGING
@@ -50,7 +61,7 @@ pyautogui.PAUSE = 0.5
 def print_header():
     os.system('cls' if os.name=='nt' else 'clear')
     print("="*92)
-    print(" BATIK SYSTEM | MARU V3.3 (AUTO-ADMIN ENABLED)")
+    print(" BATIK SYSTEM | MARU AUTOMATION | V3.5 (MANUAL ADMIN)")
     print("="*92)
     print(f"{'TIME':<10} | {'STATION':<15} | {'ACTION':<45} | STATUS")
     print("-"*92)
@@ -94,7 +105,6 @@ class MaruRobot:
         self.db   = DB()
         self.hwnd = 0
         
-        # Config Granular
         if "220" in self.mode:
             self.target_key = "220"
             self.out_dir = config.DVOR_DIR
@@ -118,38 +128,29 @@ class MaruRobot:
         return target
 
     def focus_and_click_main(self):
-        """Gabungan Focus + Klik Main agar lebih efisien"""
         if not self.hwnd: return False
         try:
-            # 1. Restore & Foreground
             if win32gui.IsIconic(self.hwnd): win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
             win32gui.SetForegroundWindow(self.hwnd)
             time.sleep(0.5)
 
-            # 2. Pancingan Fokus (Klik Title Bar)
             rect = win32gui.GetWindowRect(self.hwnd)
-            pyautogui.click(rect[0] + 50, rect[1] + 10) 
+            pyautogui.click(rect[0] + 50, rect[1] + 10) # Pancingan Title Bar
             time.sleep(0.2)
-
-            # 3. Klik Tombol Main (Relative)
-            pyautogui.click(rect[0] + 60, rect[1] + 80)
+            pyautogui.click(rect[0] + 60, rect[1] + 80) # Main Button
             time.sleep(0.5)
             return True
         except:
-            # Fallback jika gagal fokus
             pyautogui.press("alt")
             return False
 
     def save_dialog(self, full, is_txt):
-        # Timing dioptimalkan (sedikit lebih cepat tapi aman)
         pyautogui.hotkey("alt","n"); time.sleep(0.3)
         pyperclip.copy(full)
         pyautogui.hotkey("ctrl","v"); time.sleep(0.3)
         pyautogui.hotkey("alt","s"); time.sleep(0.8)
-        if is_txt: 
-            pyautogui.hotkey("alt","y"); time.sleep(0.3)
-        else: 
-            time.sleep(2.0) # PDF butuh waktu render
+        if is_txt: pyautogui.hotkey("alt","y"); time.sleep(0.3)
+        else: time.sleep(2.0)
 
     def read_file(self, f):
         try:
@@ -170,11 +171,10 @@ class MaruRobot:
         if not self.hwnd: 
             ui(self.station_name, "Window Not Found", "MISSING"); return
 
-        # --- LANGKAH 1: SAVE TXT ---
+        # --- STEP 1: SAVE TXT ---
         self.focus_and_click_main()
         ui(self.station_name, "Saving Log (TXT)", "...")
 
-        # Logic Save TXT (Beda shortcut dikit)
         if "220" in self.mode:
             pyautogui.hotkey("ctrl","p"); time.sleep(1.0)
             pyautogui.hotkey("alt","s"); time.sleep(1.0)
@@ -186,21 +186,18 @@ class MaruRobot:
         self.save_dialog(txt_path, True)
         raw = self.read_file(txt_path)
 
-        # --- LANGKAH 2: PRINT PDF ---
+        # --- STEP 2: PRINT PDF ---
         ui(self.station_name, "Printing Evidence (PDF)", "...")
-        pyautogui.press("esc"); time.sleep(0.5) # Reset
+        pyautogui.press("esc"); time.sleep(0.5)
         
-        self.focus_and_click_main() # Klik Main lagi
-        
+        self.focus_and_click_main()
         pyautogui.hotkey("ctrl","p"); time.sleep(1.0)
         
         if "220" in self.mode:
-            # MARU 220: Alt+P -> F4 -> M -> Enter -> Enter
             pyautogui.hotkey("alt","p"); time.sleep(0.3)
             pyautogui.press(["f4","m","enter"]); time.sleep(0.3)
             pyautogui.press("enter"); time.sleep(1.5)
         else:
-            # MARU 320: F4 -> M -> Enter -> Alt+A -> Alt+O
             pyautogui.press(["f4","m","enter"]); time.sleep(0.5)
             pyautogui.hotkey("alt","a"); time.sleep(0.3)
             pyautogui.hotkey("alt","o"); time.sleep(1.5)
@@ -218,19 +215,26 @@ if __name__ == "__main__":
     print_header()
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target", type=str, default="ALL")
+    parser.add_argument("--DVOR", action="store_true", help="Run only MARU 220")
+    parser.add_argument("--DME", action="store_true", help="Run only MARU 320")
     args = parser.parse_args()
-    target_arg = args.target.upper()
     
-    if target_arg == "ALL":
-        try:
-            bot1 = MaruRobot("220"); bot1.run_job(); time.sleep(1)
-            bot2 = MaruRobot("320"); bot2.run_job()
-        except: pass
-    else:
-        bot = MaruRobot(target_arg)
-        try: bot.run_job()
-        except Exception as e:
-            print("CRITICAL ERROR:", e)
-            logging.error(traceback.format_exc())
-        finally: bot.db.close()
+    run_all = False
+    if not args.DVOR and not args.DME:
+        run_all = True
+
+    try:
+        if args.DVOR or run_all:
+            bot1 = MaruRobot("220")
+            bot1.run_job()
+            if args.DME or run_all: time.sleep(2)
+
+        if args.DME or run_all:
+            bot2 = MaruRobot("320")
+            bot2.run_job()
+            
+    except KeyboardInterrupt:
+        print("\n[!] Stopped by User")
+    except Exception as e:
+        print(f"CRITICAL ERROR: {e}")
+        logging.error(traceback.format_exc())
