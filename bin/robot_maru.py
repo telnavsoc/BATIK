@@ -1,42 +1,34 @@
 # FILE: bin/robot_maru.py
 # ================================================================
-# BATIK SYSTEM - MARU ROBOT V3.5 (MANUAL ADMIN CHECK)
+# BATIK SYSTEM - MARU ROBOT V3.6 (DASHBOARD CONNECTED)
 # ================================================================
 
-import sys, os, time, logging, sqlite3, traceback, argparse, ctypes
+import sys, os, time, logging, sqlite3, traceback, argparse, ctypes, csv
 import win32gui, win32con
 import pyautogui, pyperclip
 from datetime import datetime
 import config
 
 # ================================================================
-# 1. ADMIN CHECK (MODE PASIF)
+# 1. ADMIN CHECK
 # ================================================================
 def is_admin():
     try: return ctypes.windll.shell32.IsUserAnAdmin()
     except: return False
 
 if __name__ == "__main__":
-    # JANGAN RESTART OTOMATIS! ITU MEMBUNUH CURTAIN.
-    # Cukup beri peringatan keras jika user lupa.
     if not is_admin():
         os.system('cls' if os.name=='nt' else 'clear')
         print("\n" + "!"*60)
         print(" [ERROR] AKSES DITOLAK / ACCESS DENIED")
         print("!"*60)
-        print(" Script ini WAJIB dijalankan sebagai ADMINISTRATOR.")
-        print(" Robot tidak bisa mengetik/klik di aplikasi MARU tanpa izin Admin.")
-        print("-" * 60)
-        print(" SOLUSI:")
-        print(" 1. Tutup Terminal ini.")
-        print(" 2. Klik Kanan VS Code / PowerShell -> 'Run as Administrator'")
-        print(" 3. Jalankan perintah lagi.")
+        print(" Mohon 'Run as Administrator' pada Terminal/VS Code Anda.")
         print("!"*60 + "\n")
-        time.sleep(5) # Biar user sempat baca
+        time.sleep(5)
         sys.exit(1)
 
 # ================================================================
-# SETUP & LOGGING
+# SETUP
 # ================================================================
 class StderrFilter:
     def __init__(self, orig): self.o = orig
@@ -61,7 +53,7 @@ pyautogui.PAUSE = 0.5
 def print_header():
     os.system('cls' if os.name=='nt' else 'clear')
     print("="*92)
-    print(" BATIK SYSTEM | MARU AUTOMATION | V3.5 (MANUAL ADMIN)")
+    print(" BATIK SYSTEM | MARU AUTOMATION | V3.6 (DASHBOARD CONNECTED)")
     print("="*92)
     print(f"{'TIME':<10} | {'STATION':<15} | {'ACTION':<45} | STATUS")
     print("-"*92)
@@ -71,7 +63,7 @@ def ui(st, act, stat="..."):
     print(f"{t:<10} | {st:<15} | {act:<45} | {stat}")
 
 # ================================================================
-# DATABASE
+# DATABASE & CSV DASHBOARD
 # ================================================================
 class DB:
     def __init__(self):
@@ -81,6 +73,31 @@ class DB:
         self.cur.execute("""CREATE TABLE IF NOT EXISTS measurements(id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER, parameter_name TEXT, value_mon1 TEXT, value_mon2 TEXT)""")
         self.conn.commit()
 
+    def save_to_csv_dashboard(self, station_name, parsed_data):
+        """Fungsi ini Wajib agar data muncul di Dashboard Streamlit"""
+        try:
+            csv_file = os.path.join(config.BASE_DIR, "output", "monitor_live.csv")
+            
+            # Format baris CSV
+            row = {'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"), 'station': station_name}
+            
+            # Masukkan parameter ke kolom
+            for k, v in parsed_data.items():
+                # Bersihkan nama kolom agar aman
+                clean_key = k.replace(" ", "_").replace("(", "").replace(")", "").replace("-", "")
+                row[clean_key] = v
+
+            # Tulis ke file (Append Mode)
+            file_exists = os.path.isfile(csv_file)
+            with open(csv_file, mode='a', newline='') as f:
+                writer = csv.DictWriter(f, fieldnames=row.keys())
+                if not file_exists: writer.writeheader()
+                writer.writerow(row)
+                
+            ui(station_name, "Dashboard Updated", "SYNC")
+        except Exception as e:
+            ui(station_name, f"CSV Error: {e}", "WARN")
+
     def save(self, station, pdf, raw, parsed):
         try:
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -89,6 +106,10 @@ class DB:
             rows = [(sid, k, v, "-") for k,v in parsed.items()]
             self.cur.executemany("INSERT INTO measurements(session_id,parameter_name,value_mon1,value_mon2) VALUES(?,?,?,?)", rows)
             self.conn.commit()
+            
+            # [PENTING] Simpan juga ke CSV untuk Dashboard
+            self.save_to_csv_dashboard(station, parsed)
+            
             ui(station, "DB Saved", "DONE")
         except Exception as e:
             ui(station, f"DB Error: {e}", "FAIL")
@@ -106,15 +127,9 @@ class MaruRobot:
         self.hwnd = 0
         
         if "220" in self.mode:
-            self.target_key = "220"
-            self.out_dir = config.DVOR_DIR
-            self.station_name = "MARU 220"
-            self.temp_txt = "DVOR_temp.txt"
+            self.target_key = "220"; self.out_dir = config.DVOR_DIR; self.station_name = "MARU 220"; self.temp_txt = "DVOR_temp.txt"
         else:
-            self.target_key = "320"
-            self.out_dir = config.DME_DIR
-            self.station_name = "MARU 320"
-            self.temp_txt = "DME_temp.txt"
+            self.target_key = "320"; self.out_dir = config.DME_DIR; self.station_name = "MARU 320"; self.temp_txt = "DME_temp.txt"
 
         os.makedirs(self.out_dir, exist_ok=True)
         os.makedirs(config.TEMP_DIR, exist_ok=True)
@@ -133,16 +148,13 @@ class MaruRobot:
             if win32gui.IsIconic(self.hwnd): win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
             win32gui.SetForegroundWindow(self.hwnd)
             time.sleep(0.5)
-
             rect = win32gui.GetWindowRect(self.hwnd)
-            pyautogui.click(rect[0] + 50, rect[1] + 10) # Pancingan Title Bar
+            pyautogui.click(rect[0] + 50, rect[1] + 10) 
             time.sleep(0.2)
-            pyautogui.click(rect[0] + 60, rect[1] + 80) # Main Button
+            pyautogui.click(rect[0] + 60, rect[1] + 80)
             time.sleep(0.5)
             return True
-        except:
-            pyautogui.press("alt")
-            return False
+        except: return False
 
     def save_dialog(self, full, is_txt):
         pyautogui.hotkey("alt","n"); time.sleep(0.3)
@@ -168,13 +180,11 @@ class MaruRobot:
     def run_job(self):
         ui(self.station_name, "Finding Window...", "SEARCH")
         self.hwnd = self.find_window()
-        if not self.hwnd: 
-            ui(self.station_name, "Window Not Found", "MISSING"); return
+        if not self.hwnd: ui(self.station_name, "Window Not Found", "MISSING"); return
 
-        # --- STEP 1: SAVE TXT ---
+        # 1. SAVE TXT
         self.focus_and_click_main()
         ui(self.station_name, "Saving Log (TXT)", "...")
-
         if "220" in self.mode:
             pyautogui.hotkey("ctrl","p"); time.sleep(1.0)
             pyautogui.hotkey("alt","s"); time.sleep(1.0)
@@ -186,13 +196,11 @@ class MaruRobot:
         self.save_dialog(txt_path, True)
         raw = self.read_file(txt_path)
 
-        # --- STEP 2: PRINT PDF ---
+        # 2. PRINT PDF
         ui(self.station_name, "Printing Evidence (PDF)", "...")
         pyautogui.press("esc"); time.sleep(0.5)
-        
         self.focus_and_click_main()
         pyautogui.hotkey("ctrl","p"); time.sleep(1.0)
-        
         if "220" in self.mode:
             pyautogui.hotkey("alt","p"); time.sleep(0.3)
             pyautogui.press(["f4","m","enter"]); time.sleep(0.3)
@@ -209,32 +217,22 @@ class MaruRobot:
         ui(self.station_name, "Job Completed", "SUCCESS")
 
 # ================================================================
-# MAIN EXECUTION
+# MAIN
 # ================================================================
 if __name__ == "__main__":
     print_header()
-    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--DVOR", action="store_true", help="Run only MARU 220")
-    parser.add_argument("--DME", action="store_true", help="Run only MARU 320")
+    parser.add_argument("--DVOR", action="store_true")
+    parser.add_argument("--DME", action="store_true")
     args = parser.parse_args()
     
-    run_all = False
-    if not args.DVOR and not args.DME:
-        run_all = True
+    run_all = not (args.DVOR or args.DME)
 
     try:
         if args.DVOR or run_all:
-            bot1 = MaruRobot("220")
-            bot1.run_job()
+            bot1 = MaruRobot("220"); bot1.run_job()
             if args.DME or run_all: time.sleep(2)
-
         if args.DME or run_all:
-            bot2 = MaruRobot("320")
-            bot2.run_job()
-            
-    except KeyboardInterrupt:
-        print("\n[!] Stopped by User")
-    except Exception as e:
-        print(f"CRITICAL ERROR: {e}")
-        logging.error(traceback.format_exc())
+            bot2 = MaruRobot("320"); bot2.run_job()   
+    except KeyboardInterrupt: print("\n[!] Stopped by User")
+    except Exception as e: print(f"CRITICAL ERROR: {e}"); logging.error(traceback.format_exc())
