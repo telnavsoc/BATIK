@@ -167,7 +167,7 @@ st.markdown(f"""
         }}
     </style>
     
-    <meta http-equiv="refresh" content="30">
+    <meta http-equiv="refresh" content="3600">
 """, unsafe_allow_html=True)
 
 # --- 4. SETUP LOGIC ---
