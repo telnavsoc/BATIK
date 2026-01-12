@@ -16,3 +16,99 @@
 2026-01-08 07:40:49,656 - Data saved: OUTER MARKER
 2026-01-08 07:55:37,816 - Fatal Error: 
 2026-01-08 08:45:44,272 - Failed to start app: I/O operation on closed file.
+2026-01-11 22:54:33,298 - Traceback (most recent call last):
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 250, in __resolve_control
+    ctrl = wait_until_passes(
+           ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\timings.py", line 458, in wait_until_passes
+    raise err
+pywinauto.timings.TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\eman\BATIK\bin\robot_pmdt.py", line 439, in <module>
+    bot.start_and_login(); time.sleep(1)
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\eman\BATIK\bin\robot_pmdt.py", line 316, in start_and_login
+    dlg.Edit1.set_text("q")
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 379, in __getattribute__
+    ctrls = self.__resolve_control(self.criteria)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 261, in __resolve_control
+    raise e.original_exception
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\timings.py", line 436, in wait_until_passes
+    func_val = func(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 203, in __get_ctrl
+    dialog = self.backend.generic_wrapper_class(findwindows.find_element(**criteria[0]))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\findwindows.py", line 87, in find_element
+    raise ElementNotFoundError(kwargs)
+pywinauto.findwindows.ElementNotFoundError: {'title': 'Login', 'top_level_only': True, 'backend': 'win32'}
+
+2026-01-12 15:18:55,335 - Traceback (most recent call last):
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 250, in __resolve_control
+    ctrl = wait_until_passes(
+           ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\timings.py", line 458, in wait_until_passes
+    raise err
+pywinauto.timings.TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\eman\BATIK\bin\robot_pmdt.py", line 439, in <module>
+    bot.start_and_login(); time.sleep(1)
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\eman\BATIK\bin\robot_pmdt.py", line 317, in start_and_login
+    dlg.Edit2.set_text("qqqq")
+    ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 379, in __getattribute__
+    ctrls = self.__resolve_control(self.criteria)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 261, in __resolve_control
+    raise e.original_exception
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\timings.py", line 436, in wait_until_passes
+    func_val = func(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 203, in __get_ctrl
+    dialog = self.backend.generic_wrapper_class(findwindows.find_element(**criteria[0]))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\findwindows.py", line 87, in find_element
+    raise ElementNotFoundError(kwargs)
+pywinauto.findwindows.ElementNotFoundError: {'title': 'Login', 'top_level_only': True, 'backend': 'win32'}
+
+2026-01-12 15:18:57,895 - Traceback (most recent call last):
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 250, in __resolve_control
+    ctrl = wait_until_passes(
+           ^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\timings.py", line 458, in wait_until_passes
+    raise err
+pywinauto.timings.TimeoutError
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "D:\eman\BATIK\bin\robot_pmdt.py", line 439, in <module>
+    bot.start_and_login(); time.sleep(1)
+    ^^^^^^^^^^^^^^^^^^^^^
+  File "D:\eman\BATIK\bin\robot_pmdt.py", line 311, in start_and_login
+    except: dlg.Button5.click()
+            ^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 379, in __getattribute__
+    ctrls = self.__resolve_control(self.criteria)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 261, in __resolve_control
+    raise e.original_exception
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\timings.py", line 436, in wait_until_passes
+    func_val = func(*args, **kwargs)
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\application.py", line 203, in __get_ctrl
+    dialog = self.backend.generic_wrapper_class(findwindows.find_element(**criteria[0]))
+                                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\PC REMOTE\AppData\Local\Programs\Python\Python312\Lib\site-packages\pywinauto\findwindows.py", line 87, in find_element
+    raise ElementNotFoundError(kwargs)
+pywinauto.findwindows.ElementNotFoundError: {'title': ' System Directory', 'top_level_only': True, 'backend': 'win32'}
+
