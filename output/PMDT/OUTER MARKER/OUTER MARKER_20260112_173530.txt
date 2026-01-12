@@ -1,0 +1,15 @@
+Monitor Data
+Integral - 01/12/26 17:35:28
+
+Monitor 1
+ 01/12/26 17:35:26                                                          Ident Status   Normal
+                       Alarm Low       PreAlarm Low     Data            PreAlarm High    Alarm High
+ RF Level                  -3.0            -1.0            6.0              8.5              10.0        dB
+ Ident Modulation          74.0            75.5            80.0             95.0             100.0       %
+
+Monitor 2
+ 01/12/26 17:35:27                                                          Ident Status   Normal
+                       Alarm Low       PreAlarm Low     Data            PreAlarm High    Alarm High
+ RF Level                  -3.0            -1.0            5.9              8.5              10.0        dB
+ Ident Modulation          74.0            75.5            80.5             95.0             100.0       %
+

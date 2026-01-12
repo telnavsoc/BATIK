@@ -1,85 +1,58 @@
 # FILE: bin/robot_pmdt.py
 # =============================================================================
-# BATIK PMDT ROBOT V14.1 (AUTO-ADMIN & DASHBOARD READY)
+# BATIK PMDT ROBOT V14.3 (WAL MODE + NO CSV)
 # =============================================================================
 
 import sys
 import os
 import ctypes
-
-# -----------------------------
-# 1. AUTO-ADMIN ELEVATOR
-# -----------------------------
-def is_admin():
-    try: return ctypes.windll.shell32.IsUserAnAdmin()
-    except: return False
-
-if __name__ == "__main__":
-    # Cek Admin di awal. Restart jika perlu.
-    if not is_admin():
-        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
-        sys.exit()
-
-# -----------------------------
-# STDERR FILTER (Intercept Warning 32-bit)
-# -----------------------------
-class StderrFilter:
-    def __init__(self, original_stream):
-        self.original_stream = original_stream
-
-    def write(self, message):
-        if "32-bit application" in message or "UserWarning" in message:
-            return
-        self.original_stream.write(message)
-
-    def flush(self):
-        self.original_stream.flush()
-
-    def __getattr__(self, attr):
-        return getattr(self.original_stream, attr)
-
-if sys.stderr:
-    sys.stderr = StderrFilter(sys.stderr)
-
-# -----------------------------
-# IMPORTS
-# -----------------------------
 import warnings
-warnings.simplefilter("ignore")
-
 import logging
 import time
 import json
 import re
 import sqlite3
-import csv
 import traceback
 from datetime import datetime
-
 import pyautogui
 import win32gui
 import win32con
-
 from pywinauto import Application, Desktop
 import mss
 import cv2
 import numpy as np
 import pyperclip
-
 import config
 
-# =============================================================================
-# LOGGING
-# =============================================================================
+# --- ADMIN CHECK ---
+def is_admin():
+    try: return ctypes.windll.shell32.IsUserAnAdmin()
+    except: return False
+
+if __name__ == "__main__":
+    if not is_admin():
+        ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
+        sys.exit()
+
+# --- LOGGING SETUP ---
+class StderrFilter:
+    def __init__(self, stream): self.stream = stream
+    def write(self, msg):
+        if "32-bit" in msg or "UserWarning" in msg: return
+        self.stream.write(msg)
+    def flush(self): self.stream.flush()
+    def __getattr__(self, attr): return getattr(self.stream, attr)
+
+if sys.stderr: sys.stderr = StderrFilter(sys.stderr)
+warnings.simplefilter("ignore")
+
 logging.basicConfig(
     filename=os.path.join(config.LOG_DIR, 'robot_pmdt.log'),
     level=logging.INFO,
     format='%(asctime)s - %(message)s'
 )
 
-# =============================================================================
-# KONFIGURASI
-# =============================================================================
+# --- CONFIG ---
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.5
 
@@ -90,152 +63,77 @@ TARGET_MAP = {
     "OUTER MARKER": ("OUTER MARKER", "target_om.png", "OUTER"),
 }
 
-# Posisi Anchor PMDT di Monitor 2 (JANGAN UBAH JIKA SUDAH PAS)
-PMDT_X = 2379
-PMDT_Y = -1052
-PMDT_W = 1024
-PMDT_H = 768
+PMDT_X, PMDT_Y, PMDT_W, PMDT_H = 2379, -1052, 1024, 768
 
-# =============================================================================
-# UI UTILITIES
-# =============================================================================
-def print_header():
-    os.system('cls' if os.name == 'nt' else 'clear')
-    print("=" * 92)
-    print(" BATIK SYSTEM | PMDT AUTOMATION | V14.1 (AUTO-ADMIN)")
-    print("=" * 92)
-    print(f"{'TIME':<10} | {'STATION':<15} | {'ACTION':<45} | STATUS")
-    print("-" * 92)
-
+# --- HELPER ---
 def log_ui(station, action, status="..."):
     t = datetime.now().strftime("%H:%M:%S")
     print(f"{t:<10} | {station:<15} | {action:<45} | {status}")
 
-# =============================================================================
-# DATABASE MANAGER
-# =============================================================================
+def print_header():
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print("=" * 92)
+    print(" BATIK SYSTEM | PMDT ROBOT V14.3 (DB OPTIMIZED)")
+    print("=" * 92)
+
+# --- DATABASE MANAGER (OPTIMIZED) ---
 class DatabaseManager:
     def __init__(self):
         self.conn = sqlite3.connect(config.DB_PATH)
+        # [PENTING] Aktifkan WAL Mode untuk performa tinggi & anti-lock
+        self.conn.execute("PRAGMA journal_mode=WAL;")
         self.cursor = self.conn.cursor()
         self.create_tables()
 
     def create_tables(self):
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sessions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                station_name TEXT,
-                timestamp DATETIME,
-                evidence_path TEXT,
-                raw_clipboard TEXT
-            )
-        """)
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS measurements (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                session_id INTEGER,
-                parameter_name TEXT,
-                value_mon1 TEXT,
-                value_mon2 TEXT,
-                FOREIGN KEY(session_id) REFERENCES sessions(id)
-            )
-        """)
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, station_name TEXT, timestamp DATETIME, evidence_path TEXT, raw_clipboard TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS measurements (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER, parameter_name TEXT, value_mon1 TEXT, value_mon2 TEXT, FOREIGN KEY(session_id) REFERENCES sessions(id))")
         self.conn.commit()
 
-    def save_to_csv_dashboard(self, station_name, parsed):
-        # SIMPAN KE CSV AGAR MUNCUL DI DASHBOARD
-        try:
-            csv_path = os.path.join(config.BASE_DIR, "output", "monitor_live.csv")
-            row = {
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "station": station_name
-            }
-            # Flatten data agar masuk ke kolom
-            for k, v in parsed.items():
-                # Membersihkan key agar aman jadi header CSV
-                clean_key = k.replace(" ", "_").replace("(", "").replace(")", "").replace("-", "")
-                
-                # PMDT parse returns dict {'val':.., 'm1':.., 'm2':..} or direct value?
-                # Let's check parse logic below. parse_text returns flat dict with (Mon1)/(Mon2) keys.
-                # So v is likely a string value.
-                row[clean_key] = v
-
-            exists = os.path.isfile(csv_path)
-            with open(csv_path, "a", newline="") as f:
-                w = csv.DictWriter(f, fieldnames=row.keys())
-                if not exists: w.writeheader()
-                w.writerow(row)
-                
-            log_ui(station_name, "Dashboard Updated", "SYNC")
-        except Exception as e:
-            log_ui(station_name, f"CSV Error: {e}", "WARN")
+    # Fungsi save_to_csv_dashboard DIHAPUS karena sudah tidak dipakai
 
     def save_session(self, station, evidence, raw, parsed):
         try:
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self.cursor.execute(
-                "INSERT INTO sessions (station_name, timestamp, evidence_path, raw_clipboard) VALUES (?, ?, ?, ?)",
-                (station, ts, evidence, raw)
-            )
+            self.cursor.execute("INSERT INTO sessions (station_name, timestamp, evidence_path, raw_clipboard) VALUES (?, ?, ?, ?)", (station, ts, evidence, raw))
             session_id = self.cursor.lastrowid
-
-            # Simpan ke SQLite (Measurements Table)
-            # Kita perlu memilah Mon1 dan Mon2 dari key yang rata
+            
             temp_measurements = {} 
             for full_key, val in parsed.items():
-                # full_key contoh: "Course_Width (Mon1)"
                 base_name = full_key.replace(" (Mon1)", "").replace(" (Mon2)", "")
-                if base_name not in temp_measurements:
-                    temp_measurements[base_name] = {"m1": "-", "m2": "-"}
-                
+                if base_name not in temp_measurements: temp_measurements[base_name] = {"m1": "-", "m2": "-"}
                 if "(Mon1)" in full_key: temp_measurements[base_name]["m1"] = val
                 elif "(Mon2)" in full_key: temp_measurements[base_name]["m2"] = val
 
             rows = [(session_id, k, v["m1"], v["m2"]) for k, v in temp_measurements.items()]
-            self.cursor.executemany(
-                "INSERT INTO measurements (session_id, parameter_name, value_mon1, value_mon2) VALUES (?, ?, ?, ?)",
-                rows
-            )
+            self.cursor.executemany("INSERT INTO measurements (session_id, parameter_name, value_mon1, value_mon2) VALUES (?, ?, ?, ?)", rows)
             self.conn.commit()
-
-            # Simpan ke CSV Dashboard
-            self.save_to_csv_dashboard(station, parsed)
-            
-            log_ui(station, "DB Saved", "DONE")
+            log_ui(station, "Database Saved (WAL)", "DONE")
         except Exception as e:
             log_ui(station, f"DB Error: {e}", "FAIL")
 
     def close(self):
         if self.conn: self.conn.close()
 
-# =============================================================================
-# OPENCV TEMPLATE MATCHING
-# =============================================================================
+# --- OPENCV ---
 def locate_in_window(hwnd, template_path, threshold=0.55):
     if not os.path.exists(template_path): return None
     try:
         x1, y1, x2, y2 = win32gui.GetWindowRect(hwnd)
         w, h = x2 - x1, y2 - y1
     except: return None
-
     with mss.mss() as sct:
         grab = sct.grab({"left": x1, "top": y1, "width": w, "height": h})
         img = np.array(grab)[:, :, :3]
-
     tpl = cv2.imread(template_path, cv2.IMREAD_COLOR)
     if tpl is None: return None
-
     res = cv2.matchTemplate(img, tpl, cv2.TM_CCOEFF_NORMED)
     _, max_val, _, max_loc = cv2.minMaxLoc(res)
-
     if max_val < threshold: return None
-    
     ih, iw = tpl.shape[:2]
     return (max_loc[0] + x1 + iw // 2, max_loc[1] + y1 + ih // 2)
 
-# =============================================================================
-# HYBRID BATIK ROBOT CLASS
-# =============================================================================
+# --- ROBOT LOGIC ---
 class HybridBatikRobot:
     def __init__(self):
         self.db = DatabaseManager()
@@ -259,14 +157,11 @@ class HybridBatikRobot:
             if win32gui.IsWindowVisible(h) and ("PMDT" in title or "Selex" in title) and "About" not in title:
                 self.hwnd = h
         win32gui.EnumWindows(cb, None)
-
         if not self.hwnd: return False
         try:
             if win32gui.IsIconic(self.hwnd): win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
             try: win32gui.SetForegroundWindow(self.hwnd)
-            except: 
-                pyautogui.press("alt")
-                win32gui.SetForegroundWindow(self.hwnd)
+            except: pyautogui.press("alt"); win32gui.SetForegroundWindow(self.hwnd)
             win32gui.MoveWindow(self.hwnd, PMDT_X, PMDT_Y, PMDT_W, PMDT_H, True)
             return True
         except: return False
@@ -282,13 +177,10 @@ class HybridBatikRobot:
 
     def start_and_login(self):
         log_ui("SYSTEM", "Starting PMDT", "INIT")
-        try:
-            self.app = Application(backend="win32").connect(path=config.PATH_PMDT)
-            self.force_anchor_window()
-        except:
+        try: self.app = Application(backend="win32").connect(path=config.PATH_PMDT); self.force_anchor_window()
+        except: 
             try: self.app = Application(backend="win32").start(config.PATH_PMDT)
-            except:
-                log_ui("SYSTEM", "Cannot open PMDT EXE", "FAIL"); return
+            except: log_ui("SYSTEM", "Cannot open PMDT EXE", "FAIL"); return
 
         for _ in range(15):
             if self.force_anchor_window(): break
@@ -303,40 +195,33 @@ class HybridBatikRobot:
             try: self.main_win.menu_select("System->Connect->Network")
             except: pyautogui.press(["alt", "s", "c", "n"])
             time.sleep(2)
-            
             desk = Desktop(backend="win32")
             if desk.window(title=" System Directory").exists():
                 dlg = desk.window(title=" System Directory")
                 try: dlg.Connect.click()
                 except: dlg.Button5.click()
             time.sleep(1)
-
             if desk.window(title="Login").exists():
                 dlg = desk.window(title="Login")
-                dlg.Edit1.set_text("q")
-                dlg.Edit2.set_text("qqqq")
-                dlg.OK.click()
+                dlg.Edit1.set_text("q"); dlg.Edit2.set_text("qqqq"); dlg.OK.click()
             time.sleep(3)
             log_ui("SYSTEM", "Login Successful", "OK")
         else:
             log_ui("SYSTEM", "Application Ready", "OK")
 
     def find_and_connect(self, station, image_file, expected_keyword):
-        self.force_anchor_window()
-        self.handle_unexpected_popup()
+        self.force_anchor_window(); self.handle_unexpected_popup()
         if expected_keyword.upper() in win32gui.GetWindowText(self.hwnd).upper():
             log_ui(station, "Already Connected", "CONNECTED"); return True
 
         log_ui(station, "Scanning target...", "SEARCH")
         img_path = os.path.join(config.ASSETS_DIR, image_file)
-
         for _ in range(2):
-            pos = locate_in_window(self.hwnd, img_path, threshold=0.55)
+            pos = locate_in_window(self.hwnd, img_path)
             if pos:
                 pyautogui.moveTo(pos); pyautogui.click(); time.sleep(0.3)
                 pyautogui.rightClick(); time.sleep(0.4)
                 pyautogui.press("down"); time.sleep(0.2); pyautogui.press("enter")
-
                 for __ in range(16):
                     if expected_keyword.upper() in win32gui.GetWindowText(self.hwnd).upper():
                         log_ui(station, "Connection Established", "SUCCESS"); return True
@@ -349,18 +234,15 @@ class HybridBatikRobot:
         x_dat, y_dat = self.get_coord("data")
         x_copy, y_copy = self.get_coord("btn_copy")
 
-        if not all([x_mon, y_mon, x_dat, y_dat, x_copy, y_copy]):
-            log_ui(station, "Missing button coords", "ERROR"); return
+        if not all([x_mon, y_mon, x_dat, y_dat, x_copy, y_copy]): return
 
         pyautogui.click(x_mon, y_mon); time.sleep(1.5)
         pyautogui.click(x_dat, y_dat)
-
         print(f"{datetime.now().strftime('%H:%M:%S'):<10} | {station:<15} | {'Stabilizing 8s':<45} | ", end="", flush=True)
         for i in range(8, 0, -1): print(f"{i}..", end="", flush=True); time.sleep(1)
         print("OK")
 
-        pyperclip.copy("")
-        pyautogui.click(x_copy, y_copy); time.sleep(2)
+        pyperclip.copy(""); pyautogui.click(x_copy, y_copy); time.sleep(2)
         raw = pyperclip.paste()
 
         if raw and len(raw) > 20: self.save_evidence_and_db(station, raw)
@@ -378,20 +260,28 @@ class HybridBatikRobot:
 
     def save_evidence_and_db(self, station, raw):
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        folder = os.path.join(config.PMDT_DIR, station)
-        os.makedirs(folder, exist_ok=True)
-        out = os.path.join(folder, f"{station}_{ts}.png")
+        folder = config.get_output_folder("PMDT", station)
         
+        # 1. Evidence (PNG)
+        img_filename = f"{station}_{ts}.png"
+        img_path = os.path.join(folder, img_filename)
         if self.hwnd:
             rect = win32gui.GetWindowRect(self.hwnd)
             with mss.mss() as sct:
                 mss.tools.to_png(sct.grab({"left":rect[0],"top":rect[1],"width":rect[2]-rect[0],"height":rect[3]-rect[1]}).rgb, 
                                  sct.grab({"left":rect[0],"top":rect[1],"width":rect[2]-rect[0],"height":rect[3]-rect[1]}).size, 
-                                 output=out)
+                                 output=img_path)
 
+        # 2. Raw Data (TXT)
+        txt_filename = f"{station}_{ts}.txt"
+        txt_path = os.path.join(folder, txt_filename)
+        with open(txt_path, "w", encoding="utf-8") as f:
+            f.write(raw)
+        log_ui(station, f"Raw TXT Saved", "OK")
+
+        # 3. Database
         parsed = self.parse_text(raw)
-        self.db.save_session(station, out, raw, parsed)
-        log_ui(station, "Evidence saved", "OK")
+        self.db.save_session(station, img_path, raw, parsed)
 
     def parse_text(self, text):
         data = {}; section = "General"
@@ -405,33 +295,19 @@ class HybridBatikRobot:
                 data[f"{key} (Mon1)"] = parts[1]; data[f"{key} (Mon2)"] = parts[2]
         return data
 
-# =============================================================================
-# MAIN
-# =============================================================================
 if __name__ == "__main__":
     import argparse
-    # Auto-Admin sudah aktif di baris paling atas!
-    
     parser = argparse.ArgumentParser()
-    parser.add_argument("--target", required=True, help="LOCALIZER | GLIDE PATH | MIDDLE MARKER | OUTER MARKER")
+    parser.add_argument("--target", required=True, help="LOC, GP, MM, OM")
     args = parser.parse_args()
 
-    # Mapping Input Argument -> Config Dictionary
-    # Argumen dari Dashboard: --target "LOCALIZER"
-    # Key di TARGET_MAP: "LOCALIZER"
     target_key = args.target.upper()
-
-    if target_key not in TARGET_MAP:
-        # Coba handle jika user pakai singkatan (LOC/GP)
-        alt_map = {"LOC":"LOCALIZER", "GP":"GLIDE PATH", "MM":"MIDDLE MARKER", "OM":"OUTER MARKER"}
-        if target_key in alt_map: target_key = alt_map[target_key]
+    alt_map = {"LOC":"LOCALIZER", "GP":"GLIDE PATH", "MM":"MIDDLE MARKER", "OM":"OUTER MARKER"}
+    if target_key in alt_map: target_key = alt_map[target_key]
         
-    if target_key not in TARGET_MAP:
-        print(f"[ERROR] Target '{args.target}' tidak dikenal.")
-        sys.exit(1)
+    if target_key not in TARGET_MAP: sys.exit(1)
 
     station_name, image_file, expected_keyword = TARGET_MAP[target_key]
-
     print_header()
     bot = HybridBatikRobot()
 
@@ -440,8 +316,7 @@ if __name__ == "__main__":
         if bot.find_and_connect(station_name, image_file, expected_keyword):
             bot.collect_data_and_disconnect(station_name, expected_keyword)
             log_ui(station_name, "TASK COMPLETED", "FINISH")
-        else:
-            sys.exit(2) # Exit code error untuk launcher
-    except KeyboardInterrupt: print("\n[!] User aborted")
-    except Exception as e: print(f"\n[!] CRITICAL ERROR: {e}"); logging.error(traceback.format_exc())
+        else: sys.exit(2)
+    except KeyboardInterrupt: pass
+    except Exception as e: print(f"[!] ERROR: {e}"); logging.error(traceback.format_exc())
     finally: bot.db.close()

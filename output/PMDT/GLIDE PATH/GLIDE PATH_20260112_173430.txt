@@ -1,0 +1,23 @@
+All Monitor Data
+Integral - 01/12/26 17:34:27
+
+                        01/12/26 17:34:25    01/12/26 17:34:26
+                           Monitor 1            Monitor 2
+Course
+ Path RF Level                104.5                104.8                                                 %
+ Path DDM                     -0.027               -0.027                                                DDM
+ Path SDM                     80.4                 80.3                                                  %
+
+ Width DDM                    0.175                0.175                                                 DDM
+
+ Synth Lock / Rev Sense        _    _              _    _
+
+Clearance
+ RF Level                     105.2                105.0                                                 %
+
+ 150Hz Mod Percent            79.5                 79.6                                                  %
+
+ Synth Lock                    _                   _
+
+RF Freq Difference            7999                 8000                                                  Hz
+
