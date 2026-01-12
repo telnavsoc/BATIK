@@ -1,7 +1,7 @@
 # FILE: bin/robot_maru.py
-# ================================================================
-# BATIK SYSTEM - MARU ROBOT V3.9.1 (CLEAN SYNTAX)
-# ================================================================
+# =============================================================================
+# BATIK MARU ROBOT V14.4 (CURTAIN INTEGRATED & CLEAN)
+# =============================================================================
 
 import sys
 import os
@@ -12,13 +12,54 @@ import traceback
 import argparse
 import ctypes
 import shutil
+import warnings
+from datetime import datetime
+
+# GUI Automation
 import win32gui
 import win32con
 import pyautogui
 import pyperclip
-from datetime import datetime
+
+# Local Import
 import config
 
+# --- CONFIGURATION & PATHS ---
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(BASE_DIR, "live_monitor.log")      # Append History
+STATUS_FILE = os.path.join(BASE_DIR, "current_status.txt") # Overwrite Realtime
+
+# PyAutoGUI Settings
+pyautogui.FAILSAFE = True
+pyautogui.PAUSE = 0.5
+
+# --- UNIFIED LOGGING (SAFETY CURTAIN) ---
+def broadcast_log(module, msg, status="INFO"):
+    """
+    Mengirim log ke:
+    1. Terminal (Print)
+    2. live_monitor.log (History)
+    3. current_status.txt (Untuk UI Safety Curtain)
+    """
+    t_str = time.strftime("%H:%M:%S")
+    log_line = f"{t_str} | {module:<15} | {msg:<40} | {status}"
+    
+    # 1. Terminal
+    print(log_line)
+    
+    # 2. Log File
+    try:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(log_line + "\n")
+    except: pass
+
+    # 3. Curtain Status
+    try:
+        with open(STATUS_FILE, "w", encoding="utf-8") as f:
+            f.write(f"[{module}] {msg}") 
+    except: pass
+
+# --- ADMIN CHECK ---
 def is_admin():
     try: return ctypes.windll.shell32.IsUserAnAdmin()
     except: return False
@@ -28,64 +69,50 @@ if __name__ == "__main__":
         ctypes.windll.shell32.ShellExecuteW(None, "runas", sys.executable, " ".join(sys.argv), None, 1)
         sys.exit()
 
-class StderrFilter:
-    def __init__(self, orig): self.o = orig
-    def write(self, m):
-        if "32-bit" in m or "UserWarning" in m: return
-        self.o.write(m)
-    def flush(self): self.o.flush()
-    def __getattr__(self, a): return getattr(self.o, a)
-
-sys.stderr = StderrFilter(sys.stderr)
-
+# --- SETUP ---
+warnings.simplefilter("ignore")
 os.makedirs(config.LOG_DIR, exist_ok=True)
 logging.basicConfig(
-    filename=os.path.join(config.LOG_DIR, "robot_maru.log"),
-    level=logging.INFO,
+    filename=os.path.join(config.LOG_DIR, "robot_maru_debug.log"),
+    level=logging.ERROR,
     format="%(asctime)s - %(message)s"
 )
 
-pyautogui.FAILSAFE = True
-pyautogui.PAUSE = 0.5
-
-def print_header():
-    os.system('cls' if os.name=='nt' else 'clear')
-    print("="*92)
-    print(" BATIK SYSTEM | MARU ROBOT V3.9.1 (DB OPTIMIZED & CLEAN)")
-    print("="*92)
-
-def ui(st, act, stat="..."):
-    print(f"{datetime.now().strftime('%H:%M:%S'):<10} | {st:<15} | {act:<45} | {stat}")
-
-class DB:
+# --- DATABASE MANAGER (WAL MODE) ---
+class DatabaseManager:
     def __init__(self):
         self.conn = sqlite3.connect(config.DB_PATH)
-        # WAL Mode On
         self.conn.execute("PRAGMA journal_mode=WAL;")
-        self.cur  = self.conn.cursor()
-        self.cur.execute("CREATE TABLE IF NOT EXISTS sessions(id INTEGER PRIMARY KEY AUTOINCREMENT, station_name TEXT, timestamp DATETIME, evidence_path TEXT, raw_clipboard TEXT)")
-        self.cur.execute("CREATE TABLE IF NOT EXISTS measurements(id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER, parameter_name TEXT, value_mon1 TEXT, value_mon2 TEXT)")
+        self.cursor = self.conn.cursor()
+        self.create_tables()
+
+    def create_tables(self):
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS sessions(id INTEGER PRIMARY KEY AUTOINCREMENT, station_name TEXT, timestamp DATETIME, evidence_path TEXT, raw_clipboard TEXT)")
+        self.cursor.execute("CREATE TABLE IF NOT EXISTS measurements(id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER, parameter_name TEXT, value_mon1 TEXT, value_mon2 TEXT, FOREIGN KEY(session_id) REFERENCES sessions(id))")
         self.conn.commit()
 
-    def save(self, station, pdf, raw, parsed):
+    def save_session(self, station, pdf_path, raw, parsed):
         try:
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            self.cur.execute("INSERT INTO sessions(station_name,timestamp,evidence_path,raw_clipboard) VALUES(?,?,?,?)", (station, ts, pdf, raw))
-            sid = self.cur.lastrowid
+            self.cursor.execute("INSERT INTO sessions(station_name,timestamp,evidence_path,raw_clipboard) VALUES(?,?,?,?)", (station, ts, pdf_path, raw))
+            sid = self.cursor.lastrowid
+            
+            # Maru biasanya Single Value, kita set Mon2 jadi "-"
             rows = [(sid, k, v, "-") for k,v in parsed.items()]
-            self.cur.executemany("INSERT INTO measurements(session_id,parameter_name,value_mon1,value_mon2) VALUES(?,?,?,?)", rows)
+            self.cursor.executemany("INSERT INTO measurements(session_id,parameter_name,value_mon1,value_mon2) VALUES(?,?,?,?)", rows)
             self.conn.commit()
-            ui(station, "Database Saved (WAL)", "DONE")
+            broadcast_log(station, "Database Saved (WAL)", "DONE")
         except Exception as e:
-            ui(station, f"DB Error: {e}", "FAIL")
+            broadcast_log(station, f"DB Error: {e}", "FAIL")
 
     def close(self):
         if self.conn: self.conn.close()
 
+# --- MAIN ROBOT LOGIC ---
 class MaruRobot:
     def __init__(self, mode):
         self.mode = mode.upper()
-        self.db = DB()
+        self.db = DatabaseManager()
         self.hwnd = 0
         
         if "220" in self.mode:
@@ -115,6 +142,7 @@ class MaruRobot:
             win32gui.SetForegroundWindow(self.hwnd)
             time.sleep(0.5)
             rect = win32gui.GetWindowRect(self.hwnd)
+            # Klik area aman untuk memastikan fokus
             pyautogui.click(rect[0] + 50, rect[1] + 10)
             time.sleep(0.2)
             pyautogui.click(rect[0] + 60, rect[1] + 80)
@@ -123,18 +151,21 @@ class MaruRobot:
         except: return False
 
     def save_dialog(self, full_path, is_txt):
+        """Menangani dialog Save As Windows"""
         pyautogui.hotkey("alt", "n")
         time.sleep(0.3)
         pyperclip.copy(full_path)
         pyautogui.hotkey("ctrl", "v")
         time.sleep(0.3)
-        pyautogui.hotkey("alt", "s")
+        pyautogui.hotkey("alt", "s") # Save
         time.sleep(0.8)
         
         if is_txt:
+            # Jika replace existing file (Yes)
             pyautogui.hotkey("alt", "y")
             time.sleep(0.3)
         else:
+            # PDF butuh waktu lebih lama render
             time.sleep(2.0)
 
     def read_file(self, f):
@@ -151,17 +182,17 @@ class MaruRobot:
         return out
 
     def run_job(self):
-        ui(self.station_name, "Finding Window...", "SEARCH")
+        broadcast_log(self.station_name, "Finding Window...", "SEARCH")
         self.hwnd = self.find_window()
         if not self.hwnd:
-            ui(self.station_name, "Window Not Found", "MISSING")
+            broadcast_log(self.station_name, "Window Not Found", "MISSING")
             return
 
-        # 1. Save TXT (Temp)
+        # --- 1. Save TXT (Temp) ---
         self.focus_and_click_main()
-        ui(self.station_name, "Saving Log (TXT)", "...")
+        broadcast_log(self.station_name, "Saving Log (TXT)", "PROCESS")
         
-        # --- FIXED: Broken down into separate lines ---
+        # LOGIKA HOTKEY (Dijaga Asli sesuai Permintaan)
         if "220" in self.mode:
             pyautogui.hotkey("ctrl", "p")
             time.sleep(1.0)
@@ -171,23 +202,24 @@ class MaruRobot:
             pyautogui.hotkey("ctrl", "p")
             time.sleep(1.0)
             pyautogui.hotkey("alt", "a")
-            # Pisahkan alt+s ke baris baru juga biar aman
+            # Split line agar aman
             pyautogui.hotkey("alt", "s") 
             time.sleep(1.0)
-        # ----------------------------------------------
 
         temp_txt_path = os.path.join(config.TEMP_DIR, self.temp_txt)
         self.save_dialog(temp_txt_path, True)
         raw = self.read_file(temp_txt_path)
 
-        # 2. Print PDF
-        ui(self.station_name, "Printing Evidence (PDF)", "...")
-        pyautogui.press("esc")
+        # --- 2. Print PDF ---
+        broadcast_log(self.station_name, "Printing Evidence (PDF)", "PROCESS")
+        pyautogui.press("esc") # Clear dialog sisa jika ada
         time.sleep(0.5)
         self.focus_and_click_main()
+        
         pyautogui.hotkey("ctrl", "p")
         time.sleep(1.0)
         
+        # Select 'Microsoft Print to PDF' logic
         if "220" in self.mode:
             pyautogui.hotkey("alt", "p")
             time.sleep(0.3)
@@ -207,24 +239,31 @@ class MaruRobot:
         pdf_path = os.path.join(self.out_dir, f"{file_base}.pdf")
         self.save_dialog(pdf_path, False)
 
-        # 3. Copy TXT & Save DB
+        # --- 3. Finalize ---
         if raw:
             perm_txt = os.path.join(self.out_dir, f"{file_base}.txt")
             try: shutil.copy(temp_txt_path, perm_txt)
             except: pass
             
-            self.db.save(self.station_name, pdf_path, raw, self.parse(raw))
+            self.db.save_session(self.station_name, pdf_path, raw, self.parse(raw))
         
-        ui(self.station_name, "Job Completed", "SUCCESS")
+        broadcast_log(self.station_name, "Job Completed", "SUCCESS")
 
+# --- ENTRY POINT ---
 if __name__ == "__main__":
-    print_header()
+    os.system('cls' if os.name == 'nt' else 'clear')
+    print("=" * 60)
+    print(" BATIK SYSTEM | MARU ROBOT V14.4 (CURTAIN INTEGRATED)")
+    print("=" * 60)
+    
     parser = argparse.ArgumentParser()
     parser.add_argument("--DVOR", action="store_true")
     parser.add_argument("--DME", action="store_true")
     args = parser.parse_args()
     
+    # Jika tidak ada argumen, jalankan keduanya (Default behavior lama)
     run_all = not (args.DVOR or args.DME)
+    
     try:
         if args.DVOR or run_all:
             bot1 = MaruRobot("220")
@@ -235,5 +274,8 @@ if __name__ == "__main__":
             bot2 = MaruRobot("320")
             bot2.run_job()   
             
-    except KeyboardInterrupt: print("\n[!] Stopped")
-    except Exception as e: print(f"ERROR: {e}"); logging.error(traceback.format_exc())
+    except KeyboardInterrupt:
+        broadcast_log("SYSTEM", "User Stopped", "STOP")
+    except Exception as e:
+        broadcast_log("SYSTEM", f"Critical Error: {e}", "CRASH")
+        logging.error(traceback.format_exc())

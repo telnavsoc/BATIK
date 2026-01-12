@@ -1,7 +1,7 @@
 # FILE: bin/run_with_curtain.py
 # ================================================================
-# BATIK LAUNCHER V2 (ACTIVE MONITORING)
-# Membunuh robot seketika jika STOP_SIGNAL terdeteksi
+# BATIK LAUNCHER V4 (HARD KILLER)
+# Menggunakan TASKKILL Windows untuk memastikan Robot mati total
 # ================================================================
 
 import subprocess
@@ -13,66 +13,77 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CURTAIN_SCRIPT = os.path.join(BASE_DIR, "safety_curtain.py")
 STOP_FLAG = os.path.join(BASE_DIR, "STOP_SIGNAL")
+LOG_FILE = os.path.join(BASE_DIR, "live_monitor.log")
+
+def log_system(msg):
+    """Log pesan sistem ke file agar muncul di Curtain"""
+    t = time.strftime("%H:%M:%S")
+    formatted = f"{t} | SYSTEM           | {msg}\n"
+    print(msg) # Print ke console asli
+    try:
+        with open(LOG_FILE, "a") as f: f.write(formatted)
+    except: pass
+
+def kill_process_tree(pid):
+    """Membunuh proses dan anak-anaknya menggunakan Windows Taskkill"""
+    try:
+        # /F = Force, /T = Tree (Kill children), /PID = Process ID
+        subprocess.run(f"taskkill /F /T /PID {pid}", shell=True, 
+                       stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        print(f">>> [LAUNCHER] PID {pid} tree killed.")
+    except Exception as e:
+        print(f">>> [LAUNCHER] Kill failed: {e}")
 
 def run_job(robot_script, args_list):
-    print(f">>> [LAUNCHER] Target: {robot_script}")
-
-    # Hapus sisa sinyal stop lama
+    # Bersih-bersih
     if os.path.exists(STOP_FLAG):
         try: os.remove(STOP_FLAG)
         except: pass
+    
+    # Inisialisasi Log File
+    with open(LOG_FILE, "w") as f: f.write("") 
 
-    # 1. NYALAKAN CURTAIN (Background)
-    print(">>> [LAUNCHER] Membuka Safety Curtain...")
+    log_system("Launcher Start. Menyiapkan Curtain...")
+
+    # 1. NYALAKAN CURTAIN
     curtain_process = subprocess.Popen([sys.executable, CURTAIN_SCRIPT])
-    time.sleep(2) # Tunggu curtain siap
+    time.sleep(2)
 
-    # 2. JALANKAN ROBOT (Background juga, agar kita bisa monitor)
-    print(">>> [LAUNCHER] Menjalankan Robot...")
+    # 2. JALANKAN ROBOT
+    log_system(f"Eksekusi Robot: {os.path.basename(robot_script)}")
     full_cmd = [sys.executable, robot_script] + args_list
+    
+    # Kita biarkan robot menulis outputnya sendiri ke console & file
     robot_process = subprocess.Popen(full_cmd)
 
     try:
-        # 3. LOOPING MONITORING (NADI SISTEM)
         while True:
-            # A. Cek apakah robot sudah selesai sendiri?
+            # A. Cek Robot Selesai
             if robot_process.poll() is not None:
-                print(">>> [LAUNCHER] Robot selesai tugas.")
+                log_system("Tugas Robot Selesai.")
                 break
             
-            # B. Cek apakah Curtain mati atau File STOP ada?
+            # B. Cek Stop Signal
             if os.path.exists(STOP_FLAG) or curtain_process.poll() is not None:
                 print("\n>>> [LAUNCHER] !!! EMERGENCY STOP DETECTED !!!")
-                print(">>> [LAUNCHER] Killing Robot Process...")
+                log_system("!!! EMERGENCY STOP DETECTED !!!")
                 
-                # BUNUH ROBOT SEKETIKA
-                robot_process.terminate()
-                time.sleep(0.5)
-                if robot_process.poll() is None: # Kalau bandel
-                    robot_process.kill()
+                # --- HARD KILL ---
+                log_system("Killing Process Tree...")
+                kill_process_tree(robot_process.pid)
                 
-                print(">>> [LAUNCHER] Robot killed.")
                 break
             
-            # Cek setiap 0.1 detik
             time.sleep(0.1)
 
     except KeyboardInterrupt:
-        print("\n>>> [LAUNCHER] Interrupted by User (Terminal).")
-        robot_process.kill()
-
-    except Exception as e:
-        print(f">>> [LAUNCHER] Error: {e}")
+        kill_process_tree(robot_process.pid)
 
     finally:
-        # 4. BERSIH-BERSIH
-        print(">>> [LAUNCHER] Menutup Curtain & Membersihkan Sinyal...")
-        
-        # Pastikan Curtain mati
+        log_system("Menutup Curtain...")
         if curtain_process.poll() is None:
             curtain_process.terminate()
         
-        # Hapus file stop
         if os.path.exists(STOP_FLAG):
             try: os.remove(STOP_FLAG)
             except: pass
@@ -84,13 +95,14 @@ if __name__ == "__main__":
 
     target = sys.argv[1]
     
-    # Validasi path
+    # Path Resolver
     if not os.path.exists(target):
-        # Cek folder bin/
         alt_path = os.path.join(BASE_DIR, os.path.basename(target)) 
         if os.path.exists(alt_path): target = alt_path
         else:
-            print(f"[ERROR] Script tidak ditemukan: {target}")
-            sys.exit(1)
+            alt_path_2 = os.path.join(os.path.dirname(BASE_DIR), target)
+            if os.path.exists(alt_path_2): target = alt_path_2
+            else:
+                sys.exit(1)
 
     run_job(target, sys.argv[2:])

@@ -1,7 +1,7 @@
 <MARU 310/320 DME>
 #Site		SLO
 #Active TXP	TXP1
-#Date		2026-01-12 22:45:36
+#Date		2026-01-12 22:40:49
 
 
 [Main Status]
@@ -26,17 +26,17 @@ Equalizer Pulse                           Disabled       Disabled
 Status                                      NORMAL         NORMAL
 
 IDENT Code                                     SLO            SLO
-Frequency                             1197.0067MHz   1196.9996MHz
-Output Power                               1064.6W        1040.5W
-System Delay                             50.14usec      50.15usec
+Frequency                             1197.0064MHz   1196.9993MHz
+Output Power                               1064.6W        1044.7W
+System Delay                             50.15usec      50.15usec
 
 Reply Pulse Spacing                      12.00usec      12.00usec
-Reply Pulse Rise Time                     2.09usec       1.99usec
-Reply Pulse Decay Time                    1.96usec       1.95usec
-Reply Pulse Duration                      3.37usec       3.30usec
+Reply Pulse Rise Time                     2.07usec       1.97usec
+Reply Pulse Decay Time                    1.97usec       1.95usec
+Reply Pulse Duration                      3.41usec       3.35usec
 
-Reply Efficiency                               96%            91%
-Reply Pulse Rate                           961pp/s        933pp/s
+Reply Efficiency                               91%            96%
+Reply Pulse Rate                           930pp/s        922pp/s
 
 
 [Transponder]
@@ -77,28 +77,28 @@ Status                                      NORMAL         NORMAL
 
 ;¢¹ TXP1 Measurement [ Active ]               MON1           MON2
 IDENT Code                                     SLO            SLO
-Frequency                             1197.0067MHz   1196.9996MHz
-Output Power                               1064.6W        1040.5W
-System Delay                             50.14usec      50.15usec
+Frequency                             1197.0064MHz   1196.9993MHz
+Output Power                               1064.6W        1044.7W
+System Delay                             50.15usec      50.15usec
 Reply Pulse Spacing                      12.00usec      12.00usec
-Reply Pulse Rise Time                     2.09usec       1.99usec
-Reply Pulse Decay Time                    1.96usec       1.95usec
-Reply Pulse Duration                      3.37usec       3.30usec
-Reply Efficiency                               96%            91%
-Reply Pulse Rate                           961pp/s        933pp/s
+Reply Pulse Rise Time                     2.07usec       1.97usec
+Reply Pulse Decay Time                    1.97usec       1.95usec
+Reply Pulse Duration                      3.41usec       3.35usec
+Reply Efficiency                               91%            96%
+Reply Pulse Rate                           930pp/s        922pp/s
 
 
 ;¢¹ TXP2 Measurement [ Standby ]              MON1           MON2
 IDENT Code                                       -              -
-Frequency                             1197.0041MHz   1196.9971MHz
+Frequency                             1197.0035MHz   1196.9968MHz
 Output Power                                     -              -
-System Delay                             50.06usec      50.02usec
+System Delay                             50.07usec      50.02usec
 Reply Pulse Spacing                      12.02usec      12.02usec
-Reply Pulse Rise Time                     1.94usec       1.92usec
-Reply Pulse Decay Time                    1.91usec       1.91usec
-Reply Pulse Duration                      3.60usec       3.60usec
-Reply Efficiency                               98%            96%
-Reply Pulse Rate                           732pp/s        716pp/s
+Reply Pulse Rise Time                     1.90usec       1.92usec
+Reply Pulse Decay Time                    1.89usec       1.89usec
+Reply Pulse Duration                      3.61usec       3.60usec
+Reply Efficiency                               95%            95%
+Reply Pulse Rate                           735pp/s        728pp/s
 
 
 [Alarm Limit]
@@ -149,19 +149,19 @@ TXP2 Frequency                        1196.9000MHz   1197.1000MHz
 
 ;¢¹ PSS Status                                SYS1           SYS2
 AC/DC Status                                NORMAL         NORMAL
-AC/DC Voltage                               27.79V         27.84V
-AC/DC Current                               44.00A         36.80A
+AC/DC Voltage                               27.78V         27.79V
+AC/DC Current                               45.76A         38.40A
 
 DC/DC Status                                NORMAL         NORMAL
-DC/DC Voltage                               49.33V         50.12V
-DC/DC Current                               16.16A         16.16A
+DC/DC Voltage                               49.31V         50.10V
+DC/DC Current                                3.84A          3.84A
 
 Battery Status                              NORMAL         NORMAL
-Battery Voltage                             24.87V          0.39V
+Battery Voltage                             24.86V          0.37V
 Battery Current                              1.12A          0.96A
 
 ;¢¹ System Temperature                        SYS1           SYS2
-HPA Temperature                               34.0            3.3LPA Temperature                               31.0            3.1
+HPA Temperature                               34.5            3.3LPA Temperature                               31.0            3.1
 Ambient Temperature                                        -     
 
 

@@ -1,4 +1,4 @@
-# saved at Mon Jan 12 2026 22:59:50
+# saved at Mon Jan 12 2026 22:40:20
 [Main Status]
 ;¢¹ TX Configuration                           TX1            TX2
 
@@ -29,19 +29,19 @@ Status                                      NORMAL         NORMAL
 
 IDENT Code                                     SLO            SLO
 
-CARRIER Frequency                      116.3009MHz    116.3007MHz
-USB Frequency                          116.3109MHz    116.3108MHz
-LSB Frequency                          116.2909MHz    116.2907MHz
+CARRIER Frequency                      116.3008MHz    116.3006MHz
+USB Frequency                          116.3110MHz    116.3105MHz
+LSB Frequency                          116.2907MHz    116.2907MHz
 
-CARRIER Output Power                        109.3W         109.6W
+CARRIER Output Power                        109.5W         109.9W
 RF Input Level                            -11.2dBm       -11.0dBm
 
-Azimuth                                    3.1degs        3.2degs
-9960Hz FM Index                               16.0           16.0
+Azimuth                                    2.9degs        3.2degs
+9960Hz FM Index                               15.9           16.0
 
-30Hz AM Modulation Depth                     30.4%          30.0%
+30Hz AM Modulation Depth                     30.4%          29.9%
 9960Hz AM Modulation Depth                   29.8%          29.2%
-1020Hz AM Modulation Depth                    7.2%           7.1%
+1020Hz AM Modulation Depth                    6.8%           6.7%
 
 [END]
 [Transmitter]
@@ -101,7 +101,7 @@ Control Mode                                Normal         Normal
 
 ;¢¹ Temperature                                TX1            TX2
 
-CPA Temperature                           38.0degs       22.0degs
+CPA Temperature                           41.0degs       22.0degs
 MSG Temperature                           37.5degs       37.5degs
 
 [END]
@@ -114,27 +114,27 @@ Status                                     NORMAL         NORMAL
 
 IDENT Code                                     SLO            SLO
 
-CARRIER Frequency                      116.3009MHz    116.3007MHz
-USB Frequency                          116.3109MHz    116.3108MHz
-LSB Frequency                          116.2909MHz    116.2907MHz
+CARRIER Frequency                      116.3008MHz    116.3006MHz
+USB Frequency                          116.3110MHz    116.3105MHz
+LSB Frequency                          116.2907MHz    116.2907MHz
 
-CARRIER Output Power                        109.3W         109.6W
+CARRIER Output Power                        109.5W         109.9W
 RF Input Level                            -11.2dBm       -11.0dBm
 
-Azimuth                                    3.1degs        3.2degs
-9960Hz FM Index                               16.0           16.0
+Azimuth                                    2.9degs        3.2degs
+9960Hz FM Index                               15.9           16.0
 
-30Hz AM Modulation Depth                     30.4%          30.0%
+30Hz AM Modulation Depth                     30.4%          29.9%
 9960Hz AM Modulation Depth                   29.8%          29.2%
-1020Hz AM Modulation Depth                    7.2%           7.1%
+1020Hz AM Modulation Depth                    6.8%           6.7%
 
 
 ;¢¹ MON Test Signal Generator                MON1           MON2
 
-TSG 30Hz AM Modulation Depth                 30.4%          30.1%
+TSG 30Hz AM Modulation Depth                 30.6%          30.1%
 TSG 9960Hz AM Modulation Depth               30.3%          30.0%
 TSG 9960Hz FM Index                           15.7           15.9
-TSG Azimuth                              180.0degs      179.8degs
+TSG Azimuth                              180.2degs      179.8degs
 
 
 ;¢¹ Voltage Measurements                     MON1           MON2
@@ -143,7 +143,7 @@ TX1 +5V                                       4.9V           5.0V
 TX1 +7V                                       7.0V           7.0V
 TX1 +15V                                     14.9V          14.9V
 TX1 +28V                                     27.9V          27.9V
-TX1 -15V                                    -15.0V         -15.1V
+TX1 -15V                                    -15.0V         -15.0V
 
 
 TX2 +5V                                       5.0V           5.0V
@@ -241,11 +241,11 @@ TX -15V                                     -17.0V         -13.0V
       - MSG1                                        : Normal      - MSG2                                        : Normal      - MON1                                        : Normal      - MON2                                        : Normal      - LCU                                         : Normal
       - AC/DC1                                      : Normal      - AC/DC2                                      : Normal      - DC/DC1                                      : Normal      - DC/DC2                                      : Normal      - BATTERY1                                    : Normal      - BATTERY2                                    : Normal
 ;¢¹ DC/DC Status                         Voltage          Current
-      - DC +5V                           5.3 V             1.2 A      - DC +7V                           7.3 V             1.2 A      - DC +15V                         14.9 V             0.0 A      - DC +28V                         26.4 V            22.3 A      - DC -15V                        -13.9 V             0.0 A
+      - DC +5V                           5.2 V             1.2 A      - DC +7V                           7.3 V             1.2 A      - DC +15V                         14.9 V             0.0 A      - DC +28V                         26.6 V            18.5 A      - DC -15V                        -13.8 V             0.0 A
 ;¢¹ AC/DC Status                      Voltage          Current
-      - AC +28V                         27.0 V            11.2 A
+      - AC +28V                         26.8 V            12.9 A
 ;¢¹ Battery Status                     Voltage          Current
-      - Battery +24V                    26.0 V             0.0 A
+      - Battery +24V                    26.2 V             0.0 A
 ;¢¹ Shelter
       - Door                                        : Closed      - Fire Alarm                                  : Normal      - Ambient Temperature                         : -255.1
 ;¢¹ Version Info          Serial No.    System Version  SW Version

@@ -1,0 +1,8 @@
+22:59:42 | SYSTEM           | Eksekusi Robot: robot_maru.py
+22:59:42 | DVOR            | Finding Window...                        | SEARCH
+22:59:44 | DVOR            | Saving Log (TXT)                         | PROCESS
+22:59:51 | DVOR            | Printing Evidence (PDF)                  | PROCESS
+23:00:04 | DVOR            | Database Saved (WAL)                     | DONE
+23:00:04 | DVOR            | Job Completed                            | SUCCESS
+23:00:04 | SYSTEM           | Tugas Robot Selesai.
+23:00:04 | SYSTEM           | Menutup Curtain...
