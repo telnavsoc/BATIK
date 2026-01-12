@@ -465,7 +465,16 @@ def find_evidence(tool, date):
         ct = tool.replace("/", "_").replace("\\", "_")
         p = os.path.join(config.OUTPUT_DIR, cat, ct)
         if os.path.exists(p):
-            res.extend([os.path.join(p, f) for f in os.listdir(p) if dstr in f and f.endswith(('.png','.jpg','.pdf'))])
+            # Ambil full path untuk semua file yang cocok
+            candidates = [os.path.join(p, f) for f in os.listdir(p) if dstr in f and f.endswith(('.png','.jpg','.pdf'))]
+            res.extend(candidates)
+            
+    # --- LOGIC SORTING (TERBARU DIATAS) ---
+    # Menggunakan waktu modifikasi file (getmtime)
+    # reverse=True artinya dari Besar ke Kecil (Waktu besar = Lebih baru)
+    if res:
+        res.sort(key=os.path.getmtime, reverse=True)
+        
     return res
 
 def load_live_db():
@@ -594,14 +603,28 @@ elif menu == "Data Meter Reading":
                 
                 # CSV Export (Clean Data Only)
                 clean_rows = [r for r in rows_data if r.get('Type') == 'Data']
-                df_exp = pd.DataFrame(clean_rows)[["Parameter", "Monitor 1", "Monitor 2"]]
-                st.download_button("Download CSV", df_exp.to_csv(index=False).encode(), f"Laporan_{s_tool}_{s_date}.csv", "text/csv")
+                
+                # --- FIX: Cek apakah clean_rows ada isinya sebelum buat DataFrame ---
+                if clean_rows:
+                    try:
+                        df_exp = pd.DataFrame(clean_rows)
+                        # Pastikan kolom ada sebelum filter
+                        if set(["Parameter", "Monitor 1", "Monitor 2"]).issubset(df_exp.columns):
+                            df_final = df_exp[["Parameter", "Monitor 1", "Monitor 2"]]
+                            st.download_button("Download CSV", df_final.to_csv(index=False).encode(), f"Laporan_{s_tool}_{s_date}.csv", "text/csv")
+                        else:
+                            st.warning("Struktur data tidak lengkap untuk CSV.")
+                    except Exception as e:
+                        st.error(f"Gagal membuat CSV: {e}")
+                else:
+                    st.warning("Tidak ada data numerik yang terdeteksi untuk diunduh (Hanya Header).")
             else:
                 st.error("Format data tidak dikenali atau kosong.")
         else:
             st.warning("Data Raw tidak ditemukan.")
             
         st.markdown("#### Bukti Evidence")
+        # ... (sisanya sama) ...
         evs = find_evidence(s_tool, s_date)
         if evs:
             for e in evs:

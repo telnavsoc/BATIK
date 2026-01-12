@@ -238,8 +238,8 @@ class HybridBatikRobot:
 
         pyautogui.click(x_mon, y_mon); time.sleep(1.5)
         pyautogui.click(x_dat, y_dat)
-        print(f"{datetime.now().strftime('%H:%M:%S'):<10} | {station:<15} | {'Stabilizing 8s':<45} | ", end="", flush=True)
-        for i in range(8, 0, -1): print(f"{i}..", end="", flush=True); time.sleep(1)
+        print(f"{datetime.now().strftime('%H:%M:%S'):<10} | {station:<15} | {'Stabilizing':<45} | ", end="", flush=True)
+        for i in range(10, -1): print(f"{i}..", end="", flush=True); time.sleep(1)
         print("OK")
 
         pyperclip.copy(""); pyautogui.click(x_copy, y_copy); time.sleep(2)
