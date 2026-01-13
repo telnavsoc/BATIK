@@ -1,8 +1,64 @@
-22:59:42 | SYSTEM           | Eksekusi Robot: robot_maru.py
-22:59:42 | DVOR            | Finding Window...                        | SEARCH
-22:59:44 | DVOR            | Saving Log (TXT)                         | PROCESS
-22:59:51 | DVOR            | Printing Evidence (PDF)                  | PROCESS
-23:00:04 | DVOR            | Database Saved (WAL)                     | DONE
-23:00:04 | DVOR            | Job Completed                            | SUCCESS
-23:00:04 | SYSTEM           | Tugas Robot Selesai.
-23:00:04 | SYSTEM           | Menutup Curtain...
+11:12:12 | SYSTEM           | Eksekusi Robot: run_all.py
+11:12:13 | SYSTEM          | Starting PMDT...                         | INIT
+11:12:13 | SYSTEM          | Already Logged In (PC REMOTE)            | OK
+11:12:14 | LOCALIZER       | Scanning target...                       | SEARCH
+11:12:20 | LOCALIZER       | Connected: INDONESIA SOLO                | SUCCESS
+11:12:20 | LOCALIZER       | Opening Monitor Data (Alt+O, D)          | CMD
+11:12:22 | LOCALIZER       | Stabilizing Monitor (10s)                | WAIT
+11:12:33 | LOCALIZER       | Saved Monitor_Data                       | SAVED
+11:12:33 | LOCALIZER       | Database Saved (WAL)                     | DONE
+11:12:33 | LOCALIZER       | Opening Transmitter Data (Alt+T, D)      | CMD
+11:12:35 | LOCALIZER       | Stabilizing Transmitter (5s)             | WAIT
+11:12:41 | LOCALIZER       | Saved Transmitter_Data                   | SAVED
+11:12:41 | SYSTEM          | Disconnecting (Alt+S, D)...              | CMD
+11:12:43 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
+11:12:51 | SYSTEM          | State Confirmed: PC REMOTE               | OK
+11:12:51 | SYSTEM          | Safety Delay (3s)...                     | WAIT
+11:12:54 | LOCALIZER       | CYCLE COMPLETED                          | FINISH
+11:12:57 | SYSTEM          | Starting PMDT...                         | INIT
+11:12:57 | SYSTEM          | Already Logged In (PC REMOTE)            | OK
+11:12:58 | GLIDE PATH      | Scanning target...                       | SEARCH
+11:13:04 | GLIDE PATH      | Connected: 332.9                         | SUCCESS
+11:13:04 | GLIDE PATH      | Opening Monitor Data (Alt+O, D)          | CMD
+11:13:06 | GLIDE PATH      | Stabilizing Monitor (10s)                | WAIT
+11:13:17 | GLIDE PATH      | Saved Monitor_Data                       | SAVED
+11:13:17 | GLIDE PATH      | Database Saved (WAL)                     | DONE
+11:13:17 | GLIDE PATH      | Opening Transmitter Data (Alt+T, D)      | CMD
+11:13:19 | GLIDE PATH      | Stabilizing Transmitter (5s)             | WAIT
+11:13:25 | GLIDE PATH      | Saved Transmitter_Data                   | SAVED
+11:13:25 | SYSTEM          | Disconnecting (Alt+S, D)...              | CMD
+11:13:27 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
+11:13:37 | SYSTEM          | Disconnect Failed / Stuck                | FAIL
+11:13:37 | GLIDE PATH      | Disconnect Warning                       | WARN
+11:13:40 | SYSTEM          | Starting PMDT...                         | INIT
+11:13:40 | SYSTEM          | Already Logged In (PC REMOTE)            | OK
+11:13:41 | MIDDLE MARKER   | Scanning target...                       | SEARCH
+11:13:47 | MIDDLE MARKER   | Connected: MIDDLE MARKER                 | SUCCESS
+11:13:47 | MIDDLE MARKER   | Opening Monitor Data (Alt+O, D)          | CMD
+11:13:49 | MIDDLE MARKER   | Stabilizing Monitor (10s)                | WAIT
+11:14:00 | MIDDLE MARKER   | Saved Monitor_Data                       | SAVED
+11:14:00 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
+11:14:00 | MIDDLE MARKER   | Opening Transmitter Data (Alt+T, D)      | CMD
+11:14:02 | MIDDLE MARKER   | Stabilizing Transmitter (5s)             | WAIT
+11:14:08 | MIDDLE MARKER   | Saved Transmitter_Data                   | SAVED
+11:14:08 | SYSTEM          | Disconnecting (Alt+S, D)...              | CMD
+11:14:09 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
+11:14:11 | SYSTEM          | State Confirmed: PC REMOTE               | OK
+11:14:11 | SYSTEM          | Safety Delay (3s)...                     | WAIT
+11:14:14 | MIDDLE MARKER   | CYCLE COMPLETED                          | FINISH
+11:14:17 | SYSTEM          | Starting PMDT...                         | INIT
+11:14:18 | SYSTEM          | Already Logged In (PC REMOTE)            | OK
+11:14:19 | OUTER MARKER    | Scanning target...                       | SEARCH
+11:14:33 | OUTER MARKER    | Target Not Found / Timeout               | FAIL
+11:14:36 | DVOR            | Finding Window...                        | SEARCH
+11:14:38 | DVOR            | Saving Log (TXT)                         | PROCESS
+11:14:45 | DVOR            | Printing Evidence (PDF)                  | PROCESS
+11:14:58 | DVOR            | Database Saved (WAL)                     | DONE
+11:14:58 | DVOR            | Job Completed                            | SUCCESS
+11:15:02 | DME             | Finding Window...                        | SEARCH
+11:15:04 | DME             | Saving Log (TXT)                         | PROCESS
+11:15:11 | DME             | Printing Evidence (PDF)                  | PROCESS
+11:15:25 | DME             | Database Saved (WAL)                     | DONE
+11:15:25 | DME             | Job Completed                            | SUCCESS
+11:15:28 | SYSTEM           | Tugas Robot Selesai.
+11:15:28 | SYSTEM           | Menutup Curtain...

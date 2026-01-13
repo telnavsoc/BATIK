@@ -1,6 +1,6 @@
 # FILE: bin/robot_pmdt.py
 # =============================================================================
-# BATIK PMDT ROBOT V14.4 (CLEANSED & SAFETY CURTAIN INTEGRATED)
+# BATIK PMDT ROBOT V15.3 (STRICT DISCONNECT VALIDATION)
 # =============================================================================
 
 import sys
@@ -41,37 +41,23 @@ pyautogui.PAUSE = 0.5
 PMDT_X, PMDT_Y, PMDT_W, PMDT_H = 2379, -1052, 1024, 768
 
 TARGET_MAP = {
-    "LOCALIZER": ("LOCALIZER", "target_loc.png", "LOCALIZER"),
-    "GLIDE PATH": ("GLIDE PATH", "target_gp.png", "GLIDE"),
-    "MIDDLE MARKER": ("MIDDLE MARKER", "target_mm.png", "MIDDLE"),
-    "OUTER MARKER": ("OUTER MARKER", "target_om.png", "OUTER"),
+    "LOCALIZER": ("LOCALIZER", "target_loc.png", "INDONESIA SOLO"),
+    "GLIDE PATH": ("GLIDE PATH", "target_gp.png", "332.9"),
+    "MIDDLE MARKER": ("MIDDLE MARKER", "target_mm.png", "MIDDLE MARKER"),
+    "OUTER MARKER": ("OUTER MARKER", "target_om.png", "OUTER MARKER"),
 }
 
 # --- UNIFIED LOGGING (SAFETY CURTAIN) ---
 def broadcast_log(module, msg, status="INFO"):
-    """
-    Fungsi tunggal untuk:
-    1. Print ke Terminal
-    2. Tulis ke live_monitor.log (Append)
-    3. Tulis ke current_status.txt (Overwrite untuk Curtain UI)
-    """
     t_str = time.strftime("%H:%M:%S")
-    # Format untuk Terminal & Log File
     log_line = f"{t_str} | {module:<15} | {msg:<40} | {status}"
-    
-    # 1. Print Terminal
     print(log_line)
-    
-    # 2. Append Log File
     try:
         with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(log_line + "\n")
     except: pass
-
-    # 3. Update Status File (Hanya pesan terakhir untuk UI)
     try:
         with open(STATUS_FILE, "w", encoding="utf-8") as f:
-            # Format ringkas untuk file status jika diperlukan Curtain
             f.write(f"[{module}] {msg}") 
     except: pass
 
@@ -86,7 +72,6 @@ if __name__ == "__main__":
         sys.exit()
 
 # --- SYSTEM LOGGING SETUP ---
-# Filter user warnings dari library 32-bit/64-bit mismatch
 warnings.simplefilter("ignore")
 logging.basicConfig(
     filename=os.path.join(config.LOG_DIR, 'robot_debug.log'),
@@ -98,7 +83,7 @@ logging.basicConfig(
 class DatabaseManager:
     def __init__(self):
         self.conn = sqlite3.connect(config.DB_PATH)
-        self.conn.execute("PRAGMA journal_mode=WAL;") # Performance Mode
+        self.conn.execute("PRAGMA journal_mode=WAL;") 
         self.cursor = self.conn.cursor()
         self.create_tables()
 
@@ -140,7 +125,7 @@ def locate_in_window(hwnd, template_path, threshold=0.55):
     
     with mss.mss() as sct:
         monitor = {"left": rect[0], "top": rect[1], "width": w, "height": h}
-        img = np.array(sct.grab(monitor))[:, :, :3] # Remove Alpha channel
+        img = np.array(sct.grab(monitor))[:, :, :3] 
     
     tpl = cv2.imread(template_path, cv2.IMREAD_COLOR)
     if tpl is None: return None
@@ -150,7 +135,6 @@ def locate_in_window(hwnd, template_path, threshold=0.55):
     
     if max_val < threshold: return None
     ih, iw = tpl.shape[:2]
-    # Return center point absolute coordinates
     return (max_loc[0] + rect[0] + iw // 2, max_loc[1] + rect[1] + ih // 2)
 
 # --- MAIN ROBOT LOGIC ---
@@ -160,20 +144,13 @@ class HybridBatikRobot:
         self.coords = self.load_coords()
         self.hwnd = 0
         self.app = None
-        self.main_win = None
 
     def load_coords(self):
         if not os.path.exists(config.COORD_FILE): return {}
         with open(config.COORD_FILE, "r") as f: return json.load(f)
 
-    def get_coord(self, key):
-        if key in self.coords.get("buttons", {}):
-            c = self.coords["buttons"][key]
-            return c["x"], c["y"]
-        return None, None
-
     def force_anchor_window(self):
-        """Memastikan window PMDT aktif, restore jika minimize, dan pindah ke monitor sekunder."""
+        """Memastikan window PMDT aktif & restore."""
         self.hwnd = 0
         def cb(h, _):
             title = win32gui.GetWindowText(h)
@@ -186,195 +163,207 @@ class HybridBatikRobot:
             if win32gui.IsIconic(self.hwnd): win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
             try: win32gui.SetForegroundWindow(self.hwnd)
             except: pyautogui.press("alt"); win32gui.SetForegroundWindow(self.hwnd)
-            
-            # Pindahkan window ke posisi monitor monitoring
             win32gui.MoveWindow(self.hwnd, PMDT_X, PMDT_Y, PMDT_W, PMDT_H, True)
             return True
         except: return False
 
-    def handle_unexpected_popup(self):
-        """Menangani popup 'About' atau error kecil lainnya."""
-        try:
-            d = Desktop(backend="win32")
-            if d.window(title="About").exists():
-                try: d.window(title="About").OK.click()
-                except: pyautogui.press("enter"); pyautogui.press("esc")
-                time.sleep(0.3)
-        except: pass
+    def check_title(self, keyword):
+        """Helper untuk mengecek text di title bar."""
+        if not self.hwnd: return False
+        title = win32gui.GetWindowText(self.hwnd).upper()
+        return keyword.upper() in title
 
     def start_and_login(self):
         broadcast_log("SYSTEM", "Starting PMDT...", "INIT")
         
-        # 1. Try Connect existing or Start new
         try: self.app = Application(backend="win32").connect(path=config.PATH_PMDT); self.force_anchor_window()
         except: 
             try: self.app = Application(backend="win32").start(config.PATH_PMDT)
             except: broadcast_log("SYSTEM", "Cannot open PMDT EXE", "FAIL"); return
 
-        # 2. Wait for Window
         for _ in range(15):
             if self.force_anchor_window(): break
             time.sleep(1)
-        self.handle_unexpected_popup()
-
-        # 3. Check Connection / Login
-        try: self.main_win = self.app.window(title_re=".*PMDT.*")
-        except: self.main_win = None
-
-        if self.main_win and "No Connection" in self.main_win.window_text():
-            broadcast_log("SYSTEM", "Login Required", "PROCESS")
-            # Trigger Menu Connect -> Network
-            try: self.main_win.menu_select("System->Connect->Network")
-            except: pyautogui.press(["alt", "s", "c", "n"])
+        
+        if self.check_title("No Connection"):
+            broadcast_log("SYSTEM", "Logging in...", "PROCESS")
             
-            time.sleep(2)
-            desk = Desktop(backend="win32")
+            # Sequence: Alt, s, c, n -> System Directory
+            pyautogui.press("alt")
+            time.sleep(0.1)
+            pyautogui.press("s")
+            time.sleep(0.1)
+            pyautogui.press("c")
+            time.sleep(0.1)
+            pyautogui.press("n")
             
-            # Handle System Directory Dialog
-            if desk.window(title=" System Directory").exists():
-                dlg = desk.window(title=" System Directory")
-                try: dlg.Connect.click()
-                except: dlg.Button5.click() # Button5 biasanya Connect
+            time.sleep(1.5)
+            pyautogui.press("enter")
             
-            time.sleep(1)
-            # Handle Login Dialog
-            if desk.window(title="Login").exists():
-                dlg = desk.window(title="Login")
-                dlg.Edit1.set_text("q")      # User
-                dlg.Edit2.set_text("qqqq")   # Pass
-                dlg.OK.click()
+            time.sleep(1.5)
+            pyautogui.write("q")
+            pyautogui.press("tab")
+            pyautogui.write("qqqq")
+            pyautogui.press("tab")
+            pyautogui.press("enter")
             
             time.sleep(3)
-            broadcast_log("SYSTEM", "Login Successful", "OK")
-        else:
-            broadcast_log("SYSTEM", "Application Ready", "OK")
-
-    def find_and_connect(self, station, image_file, expected_keyword):
-        self.force_anchor_window()
-        self.handle_unexpected_popup()
+            
+            if self.check_title("PC REMOTE"):
+                 broadcast_log("SYSTEM", "Login Successful (PC REMOTE)", "OK")
+            else:
+                 broadcast_log("SYSTEM", "Login Failed / No PC REMOTE", "WARN")
         
-        # Cek jika sudah connect ke station yang benar
-        curr_title = win32gui.GetWindowText(self.hwnd).upper()
-        if expected_keyword.upper() in curr_title:
-            broadcast_log(station, "Already Connected", "CONNECTED")
-            return True
+        elif self.check_title("PC REMOTE"):
+            broadcast_log("SYSTEM", "Already Logged In (PC REMOTE)", "OK")
+        else:
+            broadcast_log("SYSTEM", "Unknown State", "WARN")
+
+    def connect_tool(self, station, image_file, expected_keyword):
+        self.force_anchor_window()
+        
+        # Validasi Ekstra: Jangan mulai scan kalau bukan PC REMOTE
+        if not self.check_title("PC REMOTE"):
+            broadcast_log(station, "WAITING FOR PC REMOTE...", "WAIT")
+            for _ in range(10): # Tunggu 5 detik tambahan jika belum siap
+                time.sleep(0.5)
+                if self.check_title("PC REMOTE"): break
+            
+            if not self.check_title("PC REMOTE"):
+                broadcast_log(station, "ABORT: Not in PC REMOTE state", "FAIL")
+                return False
 
         broadcast_log(station, "Scanning target...", "SEARCH")
         img_path = os.path.join(config.ASSETS_DIR, image_file)
         
-        # Try scanning 2 times
-        for _ in range(2):
+        for attempt in range(2):
             pos = locate_in_window(self.hwnd, img_path)
             if pos:
-                # LOGIC KLIK MENU TREE
                 pyautogui.moveTo(pos)
                 pyautogui.click()
                 time.sleep(0.3)
                 pyautogui.rightClick()
                 time.sleep(0.4)
-                pyautogui.press("down") # Select 'Connect' context menu
+                pyautogui.press("down")
                 time.sleep(0.2)
                 pyautogui.press("enter")
                 
-                # Wait for title change indicating connection
-                for __ in range(16):
-                    if expected_keyword.upper() in win32gui.GetWindowText(self.hwnd).upper():
-                        broadcast_log(station, "Connection Established", "SUCCESS")
+                for _ in range(20):
+                    if self.check_title(expected_keyword):
+                        broadcast_log(station, f"Connected: {expected_keyword}", "SUCCESS")
                         return True
-                    self.handle_unexpected_popup()
-                    time.sleep(0.4)
-            time.sleep(1)
+                    time.sleep(0.5)
+                break 
             
-        broadcast_log(station, "Target Not Found", "FAIL")
+            time.sleep(1)
+
+        broadcast_log(station, "Target Not Found / Timeout", "FAIL")
         return False
 
-    def collect_data_and_disconnect(self, station, expected_keyword):
-        x_mon, y_mon = self.get_coord("monitor")
-        x_dat, y_dat = self.get_coord("data")
-        x_copy, y_copy = self.get_coord("btn_copy")
-
-        if not all([x_mon, y_mon, x_dat, y_dat, x_copy, y_copy]):
-            broadcast_log(station, "Coords Missing in JSON", "FAIL")
-            return
-
-        # Klik Tab Monitor -> Klik Tab Data
-        pyautogui.click(x_mon, y_mon); time.sleep(1.5)
-        pyautogui.click(x_dat, y_dat)
-        
-        # STABILISASI DATA (COUNTDOWN)
-        broadcast_log(station, "Stabilizing Data (10s)", "WAIT")
-        # Visual countdown di terminal saja agar tidak spam log
-        for i in range(10, 0, -1):
-            print(f"Sampling... {i}", end="\r")
-            time.sleep(1)
-        print("Sampling... OK  ")
-
-        # COPY DATA
-        pyperclip.copy("") # Clear clipboard first
-        pyautogui.click(x_copy, y_copy)
-        time.sleep(2) # Tunggu Windows copy buffer
-        raw = pyperclip.paste()
-
-        if raw and len(raw) > 20:
-            self.save_evidence_and_db(station, raw)
-        else:
-            broadcast_log(station, "Clipboard empty/fail", "WARN")
-            
-        self.clean_disconnect()
-
-    def clean_disconnect(self):
-        """Disconnect rapi untuk persiapan next station"""
+    def collect_data_sequence(self, station):
         self.force_anchor_window()
-        self.handle_unexpected_popup()
-        pyautogui.press("esc") # Tutup menu melayang jika ada
-        time.sleep(0.4)
-        
-        x_sys, y_sys = self.get_coord("System")
-        x_disc, y_disc = self.get_coord("btn_disconnect")
-        
-        if x_sys and y_sys:
-            pyautogui.click(x_sys, y_sys)
-            time.sleep(0.3)
-            pyautogui.click(x_disc, y_disc)
-        time.sleep(2)
 
-    def save_evidence_and_db(self, station, raw):
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-        folder = config.get_output_folder("PMDT", station)
+        # === 1. MONITOR DATA ===
+        broadcast_log(station, "Opening Monitor Data (Alt+O, D)", "CMD")
+        pyautogui.hotkey("alt", "o")
+        time.sleep(0.8) 
+        pyautogui.press("d")
         
-        # 1. Evidence Screenshot (Hanya area Window PMDT)
-        img_filename = f"{station}_{ts}.png"
-        img_path = os.path.join(folder, img_filename)
+        broadcast_log(station, "Stabilizing Monitor (10s)", "WAIT")
+        time.sleep(10)
+        
+        pyperclip.copy("") 
+        pyautogui.hotkey("ctrl", "c")
+        time.sleep(0.5)
+        raw_monitor = pyperclip.paste()
+        self.save_evidence_and_db(station, raw_monitor, data_type="Monitor_Data")
+
+
+        # === 2. TRANSMITTER DATA ===
+        broadcast_log(station, "Opening Transmitter Data (Alt+T, D)", "CMD")
+        pyautogui.hotkey("alt", "t")
+        time.sleep(0.8)
+        pyautogui.press("d")
+        
+        broadcast_log(station, "Stabilizing Transmitter (5s)", "WAIT")
+        time.sleep(5)
+        
+        pyperclip.copy("")
+        pyautogui.hotkey("ctrl", "c")
+        time.sleep(0.5)
+        raw_transmitter = pyperclip.paste()
+        self.save_evidence_and_db(station, raw_transmitter, data_type="Transmitter_Data")
+
+    def disconnect_tool(self):
+        self.force_anchor_window()
+        broadcast_log("SYSTEM", "Disconnecting (Alt+S, D)...", "CMD")
+        
+        # Lakukan aksi disconnect
+        pyautogui.hotkey("alt", "s")
+        time.sleep(0.8)
+        pyautogui.press("d")
+        
+        # --- REVISI: LOOPING SAMPAI TITLE BERUBAH ---
+        broadcast_log("SYSTEM", "Waiting for PC REMOTE...", "WAIT")
+        
+        is_disconnected = False
+        # Cek setiap 0.5 detik, maksimal 20 kali (10 detik timeout)
+        for _ in range(20):
+            if self.check_title("PC REMOTE"):
+                is_disconnected = True
+                break
+            time.sleep(0.5)
+            
+        if is_disconnected:
+            broadcast_log("SYSTEM", "State Confirmed: PC REMOTE", "OK")
+            
+            # --- JEDA WAJIB SESUAI REQUEST ---
+            broadcast_log("SYSTEM", "Safety Delay (3s)...", "WAIT")
+            time.sleep(3) 
+            # ---------------------------------
+            
+            return True
+        else:
+            broadcast_log("SYSTEM", "Disconnect Failed / Stuck", "FAIL")
+            return False
+
+    def save_evidence_and_db(self, station, raw, data_type="Monitor_Data"):
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        base_folder = config.get_output_folder("PMDT", station)
+        final_folder = os.path.join(base_folder, data_type)
+        if not os.path.exists(final_folder):
+            os.makedirs(final_folder)
+        
+        img_filename = f"{station}_{data_type}_{ts}.png"
+        img_path = os.path.join(final_folder, img_filename)
+        
         if self.hwnd:
             rect = win32gui.GetWindowRect(self.hwnd)
             with mss.mss() as sct:
-                mss.tools.to_png(
-                    sct.grab({"left":rect[0],"top":rect[1],"width":rect[2]-rect[0],"height":rect[3]-rect[1]}).rgb, 
-                    sct.grab({"left":rect[0],"top":rect[1],"width":rect[2]-rect[0],"height":rect[3]-rect[1]}).size, 
-                    output=img_path
-                )
+                monitor = {"left":rect[0],"top":rect[1],"width":rect[2]-rect[0],"height":rect[3]-rect[1]}
+                mss.tools.to_png(sct.grab(monitor).rgb, sct.grab(monitor).size, output=img_path)
 
-        # 2. Raw Text File
-        txt_filename = f"{station}_{ts}.txt"
-        txt_path = os.path.join(folder, txt_filename)
+        txt_filename = f"{station}_{data_type}_{ts}.txt"
+        txt_path = os.path.join(final_folder, txt_filename)
         with open(txt_path, "w", encoding="utf-8") as f:
             f.write(raw)
-        broadcast_log(station, "Raw Data Saved", "OK")
+        
+        broadcast_log(station, f"Saved {data_type}", "SAVED")
 
-        # 3. SQLite Database
-        parsed = self.parse_text(raw)
-        self.db.save_session(station, img_path, raw, parsed)
+        if data_type == "Monitor_Data" and len(raw) > 20:
+            parsed = self.parse_text(raw)
+            self.db.save_session(station, img_path, raw, parsed)
 
     def parse_text(self, text):
         data = {}
         section = "General"
         for line in text.splitlines():
             line = line.strip()
-            # Skip baris tidak penting
             if not line or "Monitor" in line or "Integral" in line: continue
             if line in ["Course", "Clearance"]: section = line; continue
             
-            parts = re.split(r"\s{2,}", line) # Split berdasarkan 2 spasi atau lebih
+            parts = re.split(r"\s{2,}", line)
             if len(parts) >= 3 and "/" not in parts[0]:
                 key = f"{section} - {parts[0]}"
                 data[f"{key} (Mon1)"] = parts[1]
@@ -385,10 +374,9 @@ class HybridBatikRobot:
 if __name__ == "__main__":
     import argparse
     
-    # Print Header
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 60)
-    print(" BATIK SYSTEM | PMDT ROBOT V14.4 (SAFETY INTEGRATED)")
+    print(" BATIK SYSTEM | PMDT ROBOT V15.3 (STRICT DISCONNECT)")
     print("=" * 60)
 
     parser = argparse.ArgumentParser()
@@ -409,11 +397,18 @@ if __name__ == "__main__":
     try:
         bot.start_and_login()
         time.sleep(1)
-        if bot.find_and_connect(station_name, image_file, expected_keyword):
-            bot.collect_data_and_disconnect(station_name, expected_keyword)
-            broadcast_log(station_name, "TASK COMPLETED", "FINISH")
+        
+        if bot.connect_tool(station_name, image_file, expected_keyword):
+            bot.collect_data_sequence(station_name)
+            
+            if bot.disconnect_tool():
+                broadcast_log(station_name, "CYCLE COMPLETED", "FINISH")
+            else:
+                 broadcast_log(station_name, "Disconnect Warning", "WARN")
+                 sys.exit(3) # Exit code beda untuk warning disconnect
         else:
             sys.exit(2)
+            
     except KeyboardInterrupt:
         broadcast_log("SYSTEM", "User Stopped", "STOP")
     except Exception as e:

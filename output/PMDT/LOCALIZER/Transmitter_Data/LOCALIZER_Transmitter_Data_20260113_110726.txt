@@ -1,0 +1,14 @@
+Transmitter Data
+Wattmeter Data - 01/13/26 11:07:25
+
+01/13/26 11:07:24
+Course Transmitter Parameters                            Clearance Transmitter Parameters
+ CSB Forward Power                   14.400   Watts        CSB Forward Power                   9.250    Watts
+ CSB Reflected Power                 0.000    Watts        CSB Reflected Power                 0.000    Watts
+ SBO Forward Power                   0.180    Watts        SBO Forward Power                   0.308    Watts
+ SBO Reflected Power                 0.003    Watts        SBO Reflected Power                 0.001    Watts
+
+Standby Course Transmitter Parameters                    Standby Clearance Transmitter Parameters
+ CSB Forward Power                   0.000    Watts        CSB Forward Power                   0.000    Watts
+ SBO Forward Power                   0.000    Watts        SBO Forward Power                   0.000    Watts
+

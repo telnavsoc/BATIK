@@ -1,0 +1,26 @@
+All Monitor Data
+Integral - 01/13/26 11:12:32
+
+                        01/13/26 11:12:32    01/13/26 11:12:31
+                           Monitor 1            Monitor 2
+Course
+ Centerline RF Level          94.0                 93.8                                                  %
+ Centerline DDM               0.000                0.000                                                 DDM
+ Centerline SDM               40.2                 40.1                                                  %
+ Ident Mod Percent            8.0                  8.1                                                   %
+ Width DDM                    0.155                0.155                                                 DDM
+ Ident Status                Normal              Normal
+ Synth Lock / Rev Sense        _    _              _    _
+
+Clearance
+ RF Level                     95.2                 95.1                                                  %
+ Clearance 1 DDM              0.337                0.337                                                 DDM
+ SDM                          39.9                 40.0                                                  %
+ Ident Mod Percent            8.0                  8.1                                                   %
+ Clearance 2 DDM              0.336                0.338                                                 DDM
+ Ident Status                Normal              Normal
+ Synth Lock / Rev Sense        _    _              _    _
+
+RF Freq Difference            8000                 8000                                                  Hz
+Antenna Fault                    _                    _
+
