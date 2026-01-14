@@ -1,6 +1,6 @@
 # FILE: dashboard.py
 # ================================================================
-# BATIK SOLO DASHBOARD V16 (GOOGLE SHEETS INTEGRATION)
+# BATIK SOLO DASHBOARD V20 (PDF READER FOR DVOR TX LOGIC)
 # ================================================================
 
 import streamlit as st
@@ -18,7 +18,8 @@ import re
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(BASE_DIR, "bin"))
 import config 
-import sheet_handler # <--- MODULE BARU KITA
+import sheet_handler 
+import batik_parser 
 
 st.set_page_config(
     page_title="BATIK SOLO",
@@ -30,236 +31,40 @@ st.set_page_config(
 LAUNCHER_SCRIPT = os.path.join(BASE_DIR, "bin", "run_with_curtain.py")
 DB_PATH = config.DB_PATH
 
-# --- SCHEMA DEFINITION (Untuk DVOR & Fallback) ---
-SCHEMA_MARU = {
-    "DVOR": [
-        "Status", "IDENT Code", "CARRIER Frequency", "USB Frequency", "LSB Frequency",
-        "CARRIER Output Power", "RF Input Level", "Azimuth", "9960Hz FM Index",
-        "30Hz AM Modulation Depth", "9960Hz AM Modulation Depth", "1020Hz AM Modulation Depth"
-    ]
-}
-
-# --- PARSER HELPER ---
-def clean_val(v):
-    if not v or v == "-": return ""
-    return v.strip()
-
-# --- PARSER MARU (DME / DVOR) ---
-def parse_maru_data(tool_name, raw_text):
-    rows = []
-    # 1. DETEKSI FORMAT DME BARU
-    if "[Monitor]" in raw_text and "TXP1 Measurement" in raw_text:
-        data_map = {}
-        lines = raw_text.splitlines()
-        in_monitor = False
-        in_target = False 
-        
-        target_params = [
-            "IDENT Code", "Output Power", "Frequency", "System Delay",
-            "Reply Pulse Spacing", "Reply Efficiency", "Reply Pulse Rate",
-            "Reply Pulse Rise Time", "Reply Pulse Decay Time", "Reply Pulse Duration"
-        ]
-        
-        for line in lines:
-            clean = line.strip()
-            if clean == "[Monitor]":
-                in_monitor = True; continue
-            if not in_monitor: continue
+# --- HELPER: BACA PDF SECARA BINARY (UNTUK MENCARI TX) ---
+def extract_tx_from_pdf_binary(pdf_path):
+    """
+    Membaca file PDF secara binary raw untuk mencari string 'Active TX' 
+    dan menentukan apakah TX1 atau TX2 yang muncul setelahnya.
+    """
+    try:
+        with open(pdf_path, "rb") as f:
+            content = f.read()
+            # PDF Maru biasanya menyimpan teks sebagai stream. 
+            # Kita cari byte pattern "Active TX"
+            # Pattern di PDF biasanya: (Active TX) ... (TX1)
             
-            if "TXP1 Measurement" in clean and "Active" in clean:
-                in_target = True; continue
-            if "TXP2 Measurement" in clean: 
-                in_target = False; break 
-            
-            if in_target:
-                for param in target_params:
-                    if clean.startswith(param):
-                        val_part = clean.replace(param, "").strip()
-                        tokens = re.findall(r"(\S+)", val_part)
-                        if len(tokens) >= 2:
-                            data_map[param] = {"m1": tokens[0], "m2": tokens[1]}
-        
-        for p in target_params:
-            if p in data_map:
-                rows.append({"Parameter": p, "Monitor 1": data_map[p]["m1"], "Monitor 2": data_map[p]["m2"], "Type": "Data"})
-        if rows: return rows
-
-    # 2. FALLBACK / LOGIC LAMA
-    data = {}
-    lines = raw_text.splitlines()
-    for line in lines:
-        line = line.strip()
-        if not line or line.startswith(";") or line.startswith("#") or line.startswith("["): continue
-        
-        parts = re.split(r'\s{2,}', line)
-        if len(parts) >= 2:
-            k = parts[0].strip()
-            if "Squitter" in k: k = "Reply Pulse Rate"
-            if "Pulse Duration" in k: k = "Reply Pulse Duration"
-            if "Output Power" in k and "CARRIER" not in k and "USB" not in k: k = "Output Power"
-            
-            v1 = parts[1].strip()
-            v2 = parts[2].strip() if len(parts) > 2 else ""
-            
-            if re.match(r'^[\d\.\-]+[a-zA-Z%]+$', v1):
-                match = re.match(r'^([\d\.\-]+)([a-zA-Z%]+)$', v1)
-                if match: v1 = f"{match.group(1)} {match.group(2)}"
-            if re.match(r'^[\d\.\-]+[a-zA-Z%]+$', v2):
-                match = re.match(r'^([\d\.\-]+)([a-zA-Z%]+)$', v2)
-                if match: v2 = f"{match.group(1)} {match.group(2)}"
-
-            data[k.lower()] = {"m1": v1, "m2": v2}
-
-    tool_type = tool_name.upper().replace("_", " ")
-    keys = SCHEMA_MARU.get(tool_type, [])
-    if not keys: keys = [k.title() for k in data.keys()]
-
-    for req in keys:
-        m1, m2 = "", ""
-        for k_raw, vals in data.items():
-            if req.lower() in k_raw:
-                if "LSB" in req and "lsb" not in k_raw: continue
-                if "USB" in req and "usb" not in k_raw: continue
-                if "CARRIER" in req and "carrier" not in k_raw: continue
-                m1, m2 = vals["m1"], vals["m2"]
-                break
-        if m1 or m2:
-            rows.append({"Parameter": req, "Monitor 1": m1, "Monitor 2": m2, "Type": "Data"})
-        
-    return rows
-
-# --- PARSER PMDT (MM / OM) ---
-def parse_pmdt_mm_om(raw_text):
-    mon1, mon2 = {}, {}
-    curr_mon = 0
-    lines = raw_text.splitlines()
-    for line in lines:
-        if "Monitor 1" in line: curr_mon = 1; continue
-        if "Monitor 2" in line: curr_mon = 2; continue
-        parts = line.split()
-        if len(parts) > 4:
-            unit = ""
-            if parts[-1].isalpha() or parts[-1] == "%": unit = parts[-1]
-            idx_num = -1
-            for i, p in enumerate(parts):
-                if re.match(r'^[-\d\.]+$', p): idx_num = i; break
-            if idx_num != -1:
-                param = " ".join(parts[:idx_num])
-                try:
-                    val = parts[idx_num + 2]
-                    full = f"{val} {unit}".strip()
-                    if curr_mon == 1: mon1[param] = full
-                    elif curr_mon == 2: mon2[param] = full
-                except: pass
-    rows = []
-    for req in ["RF Level", "Ident Modulation"]:
-        rows.append({"Parameter": req, "Monitor 1": mon1.get(req, ""), "Monitor 2": mon2.get(req, ""), "Type": "Data"})
-    return rows
-
-# --- PARSER PMDT (LOC / GP) ---
-def parse_pmdt_loc_gp(tool_type, raw_text):
-    data = { "Course": {}, "Clearance": {}, "RF Freq Difference": ["", ""], "Antenna Fault": ["", ""] }
-    current_section = None
-    lines = raw_text.splitlines()
-    iterator = iter(lines)
-    patterns = {
-        "Course": [
-            ("Centerline RF Level", r"Centerline RF Level\s+([\d\.]+)\s+([\d\.]+)"),
-            ("Centerline DDM", r"Centerline DDM\s+([\d\.\-]+)\s+([\d\.\-]+)"),
-            ("Centerline SDM", r"Centerline SDM\s+([\d\.]+)\s+([\d\.]+)"),
-            ("Ident Mod Percent", r"Ident Mod Percent\s+([\d\.]+)\s+([\d\.]+)"),
-            ("Width DDM", r"Width DDM\s+([\d\.]+)\s+([\d\.]+)"),
-            ("Path RF Level", r"Path RF Level\s+([\d\.]+)\s+([\d\.]+)"),
-            ("Path DDM", r"Path DDM\s+([\d\.\-]+)\s+([\d\.\-]+)"),
-            ("Path SDM", r"Path SDM\s+([\d\.]+)\s+([\d\.]+)"),
-        ],
-        "Clearance": [
-            ("RF Level", r"RF Level\s+([\d\.]+)\s+([\d\.]+)"),
-            ("Clearance 1 DDM", r"Clearance 1 DDM\s+([\d\.]+)\s+([\d\.]+)"),
-            ("SDM", r"SDM\s+([\d\.]+)\s+([\d\.]+)"),
-            ("Ident Mod Percent", r"Ident Mod Percent\s+([\d\.]+)\s+([\d\.]+)"),
-            ("Clearance 2 DDM", r"Clearance 2 DDM\s+([\d\.]+)\s+([\d\.]+)"),
-            ("150Hz Mod Percent", r"150Hz Mod Percent\s+([\d\.]+)\s+([\d\.]+)"),
-        ]
-    }
-    standalone = [ ("RF Freq Difference", r"RF Freq Difference\s+(\d+)\s+(\d+)"), ("Antenna Fault", r"Antenna Fault\s+(_|Normal|Alarm)\s+(_|Normal|Alarm)") ]
-
-    for line in iterator:
-        clean_line = line.strip()
-        if clean_line == "Course": current_section = "Course"; continue
-        elif clean_line == "Clearance": current_section = "Clearance"; continue
-
-        for key, pat in standalone:
-            match = re.search(pat, clean_line)
-            if match: data[key] = [match.group(1), match.group(2)]
-
-        if current_section in patterns:
-            for key, pat in patterns[current_section]:
-                match = re.search(pat, clean_line)
-                if match: data[current_section][key] = [match.group(1), match.group(2)]
-
-        if "Ident Status" in clean_line and current_section:
-            inline_match = re.search(r"Ident Status\s+(Normal|Alarm)\s+(Normal|Alarm)", clean_line)
-            if inline_match: data[current_section]["Ident Status"] = [inline_match.group(1), inline_match.group(2)]
-
-    matches_status = re.findall(r"Ident Status\s*\n\s*([a-zA-Z_]+)\s+([a-zA-Z_]+)", raw_text, re.MULTILINE)
-    if len(matches_status) >= 1: data["Course"]["Ident Status"] = [matches_status[0][0], matches_status[0][1]]
-    if len(matches_status) >= 2: data["Clearance"]["Ident Status"] = [matches_status[1][0], matches_status[1][1]]
-
-    rows = []
-    rows.append({"Parameter": "COURSE", "Monitor 1": "", "Monitor 2": "", "Type": "Header"})
-    if tool_type == "LOCALIZER":
-        keys = ["Centerline RF Level", "Centerline DDM", "Centerline SDM", "Ident Mod Percent", "Width DDM", "Ident Status"]
-        suffix_unit = {"Centerline RF Level": "%", "Centerline SDM": "%", "Ident Mod Percent": "%", "Centerline DDM": " DDM", "Width DDM": " DDM"}
-    else: 
-        keys = ["Path RF Level", "Path DDM", "Path SDM", "Width DDM"]
-        suffix_unit = {"Path RF Level": "%", "Path SDM": "%", "Path DDM": " DDM", "Width DDM": " DDM"}
-        
-    for k in keys:
-        if k in data["Course"]:
-            vals = data["Course"][k]
-            unit = suffix_unit.get(k, "")
-            m1, m2 = vals[0], vals[1]
-            if unit and unit.strip() not in m1: m1 += unit
-            if unit and unit.strip() not in m2: m2 += unit
-            rows.append({"Parameter": k, "Monitor 1": m1, "Monitor 2": m2, "Type": "Data"})
-
-    rows.append({"Parameter": "CLEARANCE", "Monitor 1": "", "Monitor 2": "", "Type": "Header"})
-    if tool_type == "LOCALIZER":
-        keys_clr = ["RF Level", "Clearance 1 DDM", "SDM", "Ident Mod Percent", "Clearance 2 DDM", "Ident Status"]
-        suffix_unit_clr = {"RF Level": "%", "SDM": "%", "Ident Mod Percent": "%", "Clearance 1 DDM": " DDM", "Clearance 2 DDM": " DDM"}
-    else:
-        keys_clr = ["RF Level", "150Hz Mod Percent"]
-        suffix_unit_clr = {"RF Level": "%", "150Hz Mod Percent": "%"}
-        
-    for k in keys_clr:
-        if k in data["Clearance"]:
-            vals = data["Clearance"][k]
-            unit = suffix_unit_clr.get(k, "")
-            m1, m2 = vals[0], vals[1]
-            if unit and unit.strip() not in m1: m1 += unit
-            if unit and unit.strip() not in m2: m2 += unit
-            rows.append({"Parameter": k, "Monitor 1": m1, "Monitor 2": m2, "Type": "Data"})
-
-    rows.append({"Parameter": "", "Monitor 1": "", "Monitor 2": "", "Type": "Separator"})
-    if data["RF Freq Difference"][0]:
-        rows.append({"Parameter": "RF Freq Difference", "Monitor 1": data["RF Freq Difference"][0] + " Hz", "Monitor 2": data["RF Freq Difference"][1] + " Hz", "Type": "Data"})
-    if tool_type == "LOCALIZER" and data["Antenna Fault"][0]:
-         rows.append({"Parameter": "Antenna Fault", "Monitor 1": data["Antenna Fault"][0], "Monitor 2": data["Antenna Fault"][1], "Type": "Data"})
-    return rows
+            # 1. Cari posisi "Active TX"
+            idx = content.find(b"Active TX")
+            if idx != -1:
+                # Ambil potongan data 500 byte setelah kata Active TX
+                chunk = content[idx:idx+500]
+                
+                # Cari indikator TX1 atau TX2 di potongan tersebut
+                if b"TX2" in chunk: return 2
+                if b"TX1" in chunk: return 1
+    except:
+        pass
+    return None # Gagal baca atau tidak ketemu
 
 # --- FUNGSI EMBED GOOGLE SHEET ---
 def embed_google_sheet(sheet_id, gid):
-    """Menampilkan Google Sheet di dalam Iframe Streamlit"""
-    # URL 'rm=minimal' menyembunyikan toolbar/menu Google Sheet agar lebih bersih
     url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit?gid={gid}&rm=minimal"
-    
     st.markdown(f"""
-        <div style="background-color:white; padding:10px; border-radius:10px; border:2px solid #ddd;">
-            <iframe src="{url}" width="100%" height="600px" frameborder="0"></iframe>
+        <div style="background-color:white; padding:5px; border-radius:10px; border:1px solid #ddd; margin-bottom: 20px;">
+            <iframe src="{url}" width="100%" height="800px" frameborder="0"></iframe>
         </div>
     """, unsafe_allow_html=True)
-    
     st.caption(f"🔗 [Klik untuk membuka di Tab Baru](https://docs.google.com/spreadsheets/d/{sheet_id}/edit?gid={gid})")
 
 # --- HELPER LAIN ---
@@ -286,6 +91,17 @@ def find_raw(tool, date):
         p = os.path.join(config.OUTPUT_DIR, cat, ct)
         if os.path.exists(p):
             fs = [f for f in os.listdir(p) if f.endswith(".txt") and dstr in f]
+            if fs: return os.path.join(p, sorted(fs)[-1])
+    return None
+
+def find_evidence_pdf(tool, date):
+    """Mencari file PDF Evidence"""
+    dstr = date.strftime("%Y%m%d")
+    for cat in ["MARU", "PMDT"]:
+        ct = tool.replace("/", "_").replace("\\", "_")
+        p = os.path.join(config.OUTPUT_DIR, cat, ct)
+        if os.path.exists(p):
+            fs = [f for f in os.listdir(p) if f.endswith(".pdf") and dstr in f]
             if fs: return os.path.join(p, sorted(fs)[-1])
     return None
 
@@ -389,64 +205,80 @@ if menu == "Meter Reading":
     if st.button("RUN ALL METER READING", use_container_width=True): run_robot("bin/run_all.py", [])
 
 elif menu == "Data Meter Reading":
-    st.markdown("### 📂 Laporan & Google Sheet Sync")
+    st.markdown("### 📂 Digital Logbook Viewer")
     c1, c2, c3 = st.columns(3)
-    with c1: s_date = st.date_input("Tanggal", datetime.today())
+    with c1: s_date = st.date_input("Pilih Bulan", datetime.today())
     with c2: s_tool = st.selectbox("Peralatan", get_tools())
     with c3: 
         st.write("")
-        # Tombol manual sync kalau perlu
-        force_sync = st.button("🔄 Force Re-Sync", use_container_width=True)
+        force_sync = st.button("🔄 Force Re-Sync Data", use_container_width=True)
     
     st.markdown("---")
     
-    if s_tool != "No Data":
+    # 1. LOGIKA SYNC MANUAL
+    if force_sync and s_tool != "No Data":
         raw_file = find_raw(s_tool, s_date)
         if raw_file:
-            content = ""
-            try: 
-                with open(raw_file, "r", encoding="utf-8", errors="replace") as f: content = f.read()
-            except:
-                with open(raw_file, "r", encoding="latin-1", errors="replace") as f: content = f.read()
-            
-            tool_up = s_tool.upper()
-            rows_data = []
-            
-            if "LOC" in tool_up or "GLIDE" in tool_up or "GP" in tool_up:
-                tool_type = "LOCALIZER" if "LOC" in tool_up else "GLIDEPATH"
-                rows_data = parse_pmdt_loc_gp(tool_type, content)
-            elif "MARKER" in tool_up or "MM" in tool_up or "OM" in tool_up:
-                rows_data = parse_pmdt_mm_om(content)
-            else:
-                rows_data = parse_maru_data(s_tool, content)
-            
-            if rows_data:
-                # LOGIKA: UPLOAD DULU KE GOOGLE SHEET, LALU TAMPILKAN IFRAME
-                # Kita pakai spinner biar user tau lagi loading ke Google
-                with st.spinner("Sedang sinkronisasi data ke Google Sheets..."):
-                    sheet_id, gid, err = sheet_handler.upload_data_to_sheet(s_tool, rows_data)
+            with st.spinner("Membaca Raw Data & Upload Manual..."):
+                content = ""
+                try: 
+                    with open(raw_file, "r", encoding="utf-8", errors="replace") as f: content = f.read()
+                except:
+                    with open(raw_file, "r", encoding="latin-1", errors="replace") as f: content = f.read()
                 
-                if err:
-                    st.error(f"⚠️ Gagal upload ke Google Sheet: {err}")
-                    st.warning("Menampilkan data JSON mentah sebagai cadangan:")
-                    st.json(rows_data)
-                else:
-                    st.success(f"✅ Data tersinkron dengan Google Sheet: {s_tool}")
-                    embed_google_sheet(sheet_id, gid)
+                # === [LOGIKA KHUSUS DVOR: BACA PDF] ===
+                if "DVOR" in s_tool.upper():
+                    pdf_file = find_evidence_pdf(s_tool, s_date)
+                    if pdf_file:
+                        pdf_tx = extract_tx_from_pdf_binary(pdf_file)
+                        if pdf_tx:
+                            # Injeksi Marker ke Content agar dibaca Parser
+                            content += f"\n\n# [PDF_EVIDENCE] Active TX: TX{pdf_tx}"
+                            st.toast(f"DVOR: Terdeteksi TX {pdf_tx} Active (via PDF)", icon="📡")
+                # ======================================
 
-            else:
-                st.error("Format data tidak dikenali atau kosong.")
+                # Proses Parsing
+                tool_up = s_tool.upper()
+                rows_data = []
+                active_tx = 1
+                
+                if "LOC" in tool_up or "GLIDE" in tool_up or "GP" in tool_up:
+                    t_type = "LOCALIZER" if "LOC" in tool_up else "GLIDEPATH"
+                    rows_data, active_tx = batik_parser.parse_pmdt_loc_gp(t_type, content)
+                elif "MARKER" in tool_up or "MM" in tool_up or "OM" in tool_up:
+                    rows_data, active_tx = batik_parser.parse_pmdt_mm_om(content)
+                else:
+                    rows_data, active_tx = batik_parser.parse_maru_data(s_tool, content)
+                
+                # Upload
+                if rows_data:
+                    sid, gid, err = sheet_handler.upload_data_to_sheet(s_tool, rows_data, s_date, active_tx)
+                    if err: st.error(f"Upload Gagal: {err}")
+                    else: st.success("Data berhasil disinkronkan manual!")
+                else:
+                    st.warning("Tidak ada data valid ditemukan di file raw.")
         else:
-            st.warning("Data Raw tidak ditemukan di komputer lokal.")
-            
-        st.markdown("#### Bukti Evidence")
+            st.error("File Raw tidak ditemukan.")
+
+    # 2. VIEWER GOOGLE SHEET
+    if s_tool != "No Data":
+        try:
+            sh, err = sheet_handler.connect_gsheet()
+            if not err:
+                ws, err_ws = sheet_handler.get_or_create_monthly_sheet(sh, s_tool, s_date)
+                if ws:
+                    sheet_handler.update_period_label(ws, s_date)
+                    embed_google_sheet(sh.id, ws.id)
+                else: st.info("Sheet belum dibuat (Data kosong).")
+            else: st.error("Gagal koneksi ke Google Sheet.")
+        except Exception as e: st.error(f"Viewer Error: {e}")
+
+        st.markdown("#### 📸 Bukti Evidence (Lokal)")
         evs = find_evidence(s_tool, s_date)
         if evs:
             for e in evs:
                 if e.endswith(".pdf"):
                     with open(e,"rb") as f: b64 = base64.b64encode(f.read()).decode()
                     st.markdown(f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600"></iframe>', unsafe_allow_html=True)
-                else:
-                    st.image(e)
-        else:
-            st.info("Evidence belum tersedia.")
+                else: st.image(e)
+        else: st.info("Evidence belum tersedia.")

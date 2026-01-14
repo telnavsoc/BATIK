@@ -1,0 +1,51 @@
+========================================
+RMS STATUS SNAPSHOT
+========================================
+RMS Status
+Monitor/Transmitter Status - 01/14/26 21:44:37
+
+01/14/26 21:44:37             _  Certification Test Enabled        _  Monitor Alarm Shutdown
+
+      Monitors                                                       Enabled Monitors
+                    Bypass     Alarm       Mismatch
+         Integral       _          _           _                         G  Monitor 1
+         Standby        _          _           _                         G  Monitor 2
+                                                                         _  Monitor 3
+                                                                         _  Monitor 4
+
+      Transmitters
+        Antenna Select              Main Select                 Transmitter On
+               _  Tx 1                     _  Tx 1                     _  Tx 1
+               G  Tx 2                     G  Tx 2                     G  Tx 2
+
+
+========================================
+RAW DATA DETAILS
+========================================
+
+All Monitor Data
+Integral - 01/14/26 21:44:51
+
+                        01/14/26 21:44:49    01/14/26 21:44:50
+                           Monitor 1            Monitor 2
+Course
+ Centerline RF Level          99.5                 99.2                                                  %
+ Centerline DDM               -0.001               0.000                                                 DDM
+ Centerline SDM               40.2                 40.2                                                  %
+ Ident Mod Percent            8.0                  8.1                                                   %
+ Width DDM                    0.154                0.154                                                 DDM
+ Ident Status                Normal              Normal
+ Synth Lock / Rev Sense        _    _              _    _
+
+Clearance
+ RF Level                     104.0                104.0                                                 %
+ Clearance 1 DDM              0.329                0.329                                                 DDM
+ SDM                          39.9                 40.0                                                  %
+ Ident Mod Percent            8.0                  8.1                                                   %
+ Clearance 2 DDM              0.332                0.333                                                 DDM
+ Ident Status                Normal              Normal
+ Synth Lock / Rev Sense        _    _              _    _
+
+RF Freq Difference            8000                 8000                                                  Hz
+Antenna Fault                    _                    _
+

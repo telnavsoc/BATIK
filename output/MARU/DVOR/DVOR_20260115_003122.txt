@@ -1,0 +1,252 @@
+# saved at Thu Jan 15 2026 00:31:13
+[Main Status]
+;¢¹ TX Configuration                           TX1            TX2
+
+Status                                      NORMAL         NORMAL
+
+Operating Frequency                      116.30MHz      116.30MHz
+IDENT Code                                     SLO            SLO
+
+CARRIER Output Power                         90.0W         105.0W
+USB SIN Output Power                         2.20W          1.80W
+USB COS Output Power                         2.20W          1.80W
+LSB SIN Output Power                         2.20W          1.80W
+LSB COS Output Power                         2.20W          1.80W
+
+30Hz AM Modulation Depth                     29.5%          30.0%
+1020Hz AM Modulation Depth                    7.0%           7.0%
+Voice AM Modulation Depth                     0.0%           0.0%
+
+Sideband RF Phase Offset                   0.0degs       80.0degs
+Azimuth Offset                             2.0degs        2.5degs
+
+
+
+
+;¢¹ MON Major Measurement                     MON1           MON2
+
+Status                                    BYPASSED       BYPASSED
+
+IDENT Code                                     SLO            SLO
+
+CARRIER Frequency                      116.3007MHz    116.3007MHz
+USB Frequency                          116.3108MHz    116.3106MHz
+LSB Frequency                          116.2908MHz    116.2906MHz
+
+CARRIER Output Power                         94.1W          94.1W
+RF Input Level                            -11.8dBm       -11.8dBm
+
+Azimuth                                    3.5degs        2.3degs
+9960Hz FM Index                               16.2           15.7
+
+30Hz AM Modulation Depth                     31.2%          30.7%
+9960Hz AM Modulation Depth                   29.2%          29.7%
+1020Hz AM Modulation Depth                    7.2%           7.1%
+
+[END]
+[Transmitter]
+;¢¹ General Status                             TX1            TX2
+
+Status                                      NORMAL         NORMAL
+
+;¢¹ SYN PLL Status                             TX1            TX2
+
+Operating Frequency                      116.30MHz      116.30MHz
+Carrier PLL Lock                            Normal         Normal
+USB PLL Lock                                Normal         Normal
+LSB PLL Lock                                Normal         Normal
+
+;¢¹ IDENT                                      TX1            TX2
+
+IDENT Code                                     SLO            SLO
+IDENT Mode                                  Master         Master
+IDENT Keying                                    ON             ON
+
+;¢¹ Output Power                               TX1            TX2
+
+CARRIER                                      90.0W         105.0W
+USB SIN                                      2.20W          1.80W
+USB COS                                      2.20W          1.80W
+LSB SIN                                      2.20W          1.80W
+LSB COS                                      2.20W          1.80W
+
+;¢¹ AM Modulation Depth                        TX1            TX2
+
+30Hz                                         29.5%          30.0%
+1020Hz                                        7.0%           7.0%
+Voice                                         0.0%           0.0%
+
+;¢¹ Sideband RF Phase                          TX1            TX2
+
+Phase Offset                               0.0degs       80.0degs
+
+;¢¹ Azimuth Adjustment                         TX1            TX2
+
+Azimuth Offset                             2.0degs        2.5degs
+
+;¢¹ Modulation Control                         TX1            TX2
+
+CARRIER                                         ON             ON
+Sideband                                        ON             ON
+
+;¢¹ Power Amp Control                          TX1            TX2
+
+CPA                                            OFF             ON
+USB SBA                                        OFF            OFF
+LSB SBA                                        OFF             ON
+
+;¢¹ Antenna Control                            TX1            TX2
+
+Control Mode                                Normal         Normal
+
+;¢¹ Temperature                                TX1            TX2
+
+CPA Temperature                           23.5degs       41.0degs
+MSG Temperature                           37.5degs       38.0degs
+
+[END]
+[Monitor]
+;¢¹ General Status                            MON1           MON2
+
+Status                                   BYPASSED       BYPASSED
+
+;¢¹ Major Measurement                        MON1           MON2
+
+IDENT Code                                     SLO            SLO
+
+CARRIER Frequency                      116.3007MHz    116.3007MHz
+USB Frequency                          116.3108MHz    116.3106MHz
+LSB Frequency                          116.2908MHz    116.2906MHz
+
+CARRIER Output Power                         94.1W          94.1W
+RF Input Level                            -11.8dBm       -11.8dBm
+
+Azimuth                                    3.5degs        2.3degs
+9960Hz FM Index                               16.2           15.7
+
+30Hz AM Modulation Depth                     31.2%          30.7%
+9960Hz AM Modulation Depth                   29.2%          29.7%
+1020Hz AM Modulation Depth                    7.2%           7.1%
+
+
+;¢¹ MON Test Signal Generator                MON1           MON2
+
+TSG 30Hz AM Modulation Depth                 30.4%          30.1%
+TSG 9960Hz AM Modulation Depth               30.3%          30.0%
+TSG 9960Hz FM Index                           15.8           15.9
+TSG Azimuth                              179.9degs      179.8degs
+
+
+;¢¹ Voltage Measurements                     MON1           MON2
+
+TX1 +5V                                       4.9V           5.0V
+TX1 +7V                                       7.2V           7.1V
+TX1 +15V                                     15.0V          14.9V
+TX1 +28V                                     28.2V          28.1V
+TX1 -15V                                    -15.0V         -15.1V
+
+
+TX2 +5V                                       4.9V           4.9V
+TX2 +7V                                       7.0V           7.0V
+TX2 +15V                                     15.0V          15.0V
+TX2 +28V                                     27.9V          28.0V
+TX2 -15V                                    -15.0V         -15.0V
+
+;¢¹ SIDEBAND Output Power (From MSG)            TX1            TX2
+
+USB SIN Output Power                             -          2.16W
+USB COS Output Power                             -          2.13W
+LSB SIN Output Power                             -          2.14W
+LSB COS Output Power                             -          2.25W
+[END]
+[MON Alarm Limit]
+;¢¹ MONITOR1                                 LOWER          UPPER
+
+TX1 CARRIER Frequency                  116.2900MHz    116.3100MHz
+TX2 CARRIER Frequency                  116.2900MHz    116.3100MHz
+TX1 USB Frequency                      116.3000MHz    116.3200MHz
+TX2 USB Frequency                      116.3000MHz    116.3200MHz
+TX1 LSB Frequency                      116.2800MHz    116.3000MHz
+TX2 LSB Frequency                      116.2800MHz    116.3000MHz
+
+TX1 CARRIER Output Power                     80.0W         120.0W
+TX2 CARRIER Output Power                     80.0W         120.0W
+TX1 RF Input Level                        -20.0dBm         0.0dBm
+TX2 RF Input Level                        -20.0dBm         0.0dBm
+TX1 Azimuth                                2.2degs        4.2degs
+TX2 Azimuth                                2.2degs        4.2degs
+
+TX1 9960Hz FM Index                           15.0           17.0
+TX2 9960Hz FM Index                           15.0           17.0
+TX1 30Hz AM Mod. Depth                       28.0%          32.0%
+TX2 30Hz AM Mod. Depth                       28.0%          32.0%
+TX1 9960Hz AM Mod. Depth                     28.0%          32.0%
+TX2 9960Hz AM Mod. Depth                     28.0%          32.0%
+TX1 1020Hz AM Mod. Depth                      9.0%           5.0%
+TX2 1020Hz AM Mod. Depth                      9.0%           5.0%
+
+TSG 30Hz AM Mod. Depth                       28.0%          32.0%
+TSG 9960Hz AM Mod. Depth                     28.0%          32.0%
+TSG 9960Hz FM Index                           15.0           17.0
+TSG Azimuth                                  179.0          181.0
+
+TX +5V                                        3.0V           7.0V
+TX +7V                                        5.0V           9.0V
+TX +15V                                      13.0V          17.0V
+TX +28V                                      26.0V          30.0V
+TX -15V                                     -17.0V         -13.0V
+
+
+;¢¹ MONITOR2                                 LOWER          UPPER
+
+TX1 CARRIER Frequency                  116.2900MHz    116.3100MHz
+TX2 CARRIER Frequency                  116.2900MHz    116.3100MHz
+TX1 USB Frequency Lower Limit          116.3000MHz    116.3200MHz
+TX2 USB Frequency Lower Limit          116.3000MHz    116.3200MHz
+TX1 LSB Frequency                      116.2800MHz    116.3000MHz
+TX2 LSB Frequency                      116.2800MHz    116.3000MHz
+
+TX1 CARRIER Output Power                     80.0W         120.0W
+TX2 CARRIER Output Power                     80.0W         120.0W
+TX1 RF Input Level Lower Limit            -20.0dBm         0.0dBm
+TX2 RF Input Level Lower Limit            -20.0dBm         0.0dBm
+TX1 Azimuth                                2.2degs        4.2degs
+TX2 Azimuth                                2.2degs        4.2degs
+
+TX1 9960Hz FM Index                           15.0           17.0
+TX2 9960Hz FM Index                           15.0           17.0
+TX1 30Hz AM Mod. Depth                       28.0%          32.0%
+TX2 30Hz AM Mod. Depth                       28.0%          32.0%
+TX1 9960Hz AM Mod. Depth                     28.0%          32.0%
+TX2 9960Hz AM Mod. Depth                     28.0%          32.0%
+TX1 1020Hz AM Mod. Depth                      5.0%           9.0%
+TX2 1020Hz AM Mod. Depth                      5.0%           9.0%
+
+TSG 30Hz AM Mod. Depth                       28.0%          32.0%
+TSG 9960Hz AM Mod. Depth                     28.0%          32.0%
+TSG 9960Hz FM Index                           15.0           17.0
+TSG Azimuth                                  179.0          181.0
+
+TX +5V                                        3.0V           7.0V
+TX +7V                                        5.0V           9.0V
+TX +15V                                      13.0V          17.0V
+TX +28V                                      26.0V          30.0V
+TX -15V                                     -17.0V         -13.0V
+[END]
+[MISC]
+;¢¹ Communication
+      - LCU ¡ê MON1                                  : Normal      - LCU ¡ê MON2                                  : Normal      - LCU ¡ê MSG1                                  : Normal      - LCU ¡ê MSG2                                  : Normal
+;¢¹ Unit
+      - CMA1                                        : Normal      - USB SMA1                                    : Normal      - LSB SMA1                                    : Normal      - CMA2                                        : Normal      - USB SMA2                                    : Normal      - LSB SMA2                                    : Normal
+      - MSG1                                        : Normal      - MSG2                                        : Normal      - MON1                                        : Normal      - MON2                                        : Normal      - LCU                                         : Normal
+      - AC/DC1                                      : Normal      - AC/DC2                                      : Normal      - DC/DC1                                      : Normal      - DC/DC2                                      : Normal      - BATTERY1                                    : Normal      - BATTERY2                                    : Normal
+;¢¹ DC/DC Status                         Voltage          Current
+      - DC +5V                           5.3 V             1.4 A      - DC +7V                           7.4 V             1.1 A      - DC +15V                         14.8 V             0.0 A      - DC +28V                         26.6 V            23.5 A      - DC -15V                        -14.0 V             0.0 A
+;¢¹ AC/DC Status                      Voltage          Current
+      - AC +28V                         27.0 V            11.2 A
+;¢¹ Battery Status                     Voltage          Current
+      - Battery +24V                    26.0 V             0.0 A
+;¢¹ Shelter
+      - Door                                        : Closed      - Fire Alarm                                  : Normal      - Ambient Temperature                         : -255.1
+;¢¹ Version Info          Serial No.    System Version  SW Version
+      - LCU                                   2.00        1.13.302      - MSG1                                  1.00       1.13.0201      - MSG2                                  1.00       1.13.0201      - MON1                                  1.00       1.13.0448      - MON2                                  1.00       1.13.0448[END]

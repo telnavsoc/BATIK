@@ -1,0 +1,44 @@
+========================================
+RMS STATUS SNAPSHOT
+========================================
+RMS Status
+Monitor/Transmitter Status - 01/14/26 14:05:39
+
+01/14/26 14:05:35             _  Certification Test Enabled        _  Monitor Alarm Shutdown
+
+      Monitors                                                       Enabled Monitors
+                    Bypass     Alarm       Mismatch
+         Integral       _          _           _                         G  Monitor 1
+         Standby        _          _           _                         G  Monitor 2
+                                                                         _  Monitor 3
+                                                                         _  Monitor 4
+
+      Transmitters
+        Antenna Select              Main Select                 Transmitter On
+               G  Tx 1                     G  Tx 1                     G  Tx 1
+               _  Tx 2                     _  Tx 2                     _  Tx 2
+
+
+========================================
+RAW DATA DETAILS
+========================================
+
+Transmitter Data
+Wattmeter Data - 01/14/26 14:06:01
+
+01/14/26 14:06:00
+Course Transmitter Parameters                            Clearance Transmitter Parameters
+ CSB Forward Power                   2.480    Watts        Forward Power                       0.307    Watts
+ CSB Reflected Power                 0.026    Watts        Reflected Power                     0.000    Watts
+ SBO Forward Power                   0.028    Watts
+ SBO Reflected Power                 0.000    Watts
+
+Standby Course Transmitter Parameters                    Standby Clearance Transmitter Parameters
+ CSB Forward Power                   0.000    Watts        Forward Power                       0.000    Watts
+ SBO Forward Power                   0.000    Watts
+
+                                                         Antenna Parameters
+                                                           Upper Antenna Forward Power         0.029    Watts
+                                                           Middle Antenna Forward Power        0.089    Watts
+                                                           Lower Antenna Forward Power         0.360    Watts
+

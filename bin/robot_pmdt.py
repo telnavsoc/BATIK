@@ -1,6 +1,6 @@
 # FILE: bin/robot_pmdt.py
 # =============================================================================
-# BATIK PMDT ROBOT V17.4 (STABLE V15.3 BASE + RMS FEATURE)
+# BATIK PMDT ROBOT V17.7 (STABLE + AUTO UPLOAD)
 # =============================================================================
 
 import sys
@@ -28,6 +28,13 @@ from pywinauto import Application, Desktop
 # Local Import
 import config
 
+# [AUTO-UPLOAD IMPORTS]
+try:
+    import batik_parser
+    import sheet_handler
+except ImportError:
+    print("Warning: Modul Upload tidak ditemukan.")
+
 # --- CONFIGURATION & PATHS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 LOG_FILE = os.path.join(BASE_DIR, "live_monitor.log")
@@ -40,8 +47,9 @@ pyautogui.PAUSE = 0.5
 # PMDT Window Target
 PMDT_X, PMDT_Y, PMDT_W, PMDT_H = 2379, -1052, 1024, 768
 
+# [UPDATED] Keyword Localizer diubah ke 111.50
 TARGET_MAP = {
-    "LOCALIZER": ("LOCALIZER", "target_loc.png", "INDONESIA SOLO"),
+    "LOCALIZER": ("LOCALIZER", "target_loc.png", "111.50"),
     "GLIDE PATH": ("GLIDE PATH", "target_gp.png", "332.9"),
     "MIDDLE MARKER": ("MIDDLE MARKER", "target_mm.png", "MIDDLE MARKER"),
     "OUTER MARKER": ("OUTER MARKER", "target_om.png", "OUTER MARKER"),
@@ -88,11 +96,9 @@ class DatabaseManager:
         self.check_and_update_schema()
 
     def check_and_update_schema(self):
-        # Memastikan tabel ada (Kode dari V15.3 + Kolom Baru V17)
         self.cursor.execute("CREATE TABLE IF NOT EXISTS sessions (id INTEGER PRIMARY KEY AUTOINCREMENT, station_name TEXT, timestamp DATETIME, evidence_path TEXT, raw_clipboard TEXT)")
         self.cursor.execute("CREATE TABLE IF NOT EXISTS measurements (id INTEGER PRIMARY KEY AUTOINCREMENT, session_id INTEGER, parameter_name TEXT, value_mon1 TEXT, value_mon2 TEXT, FOREIGN KEY(session_id) REFERENCES sessions(id))")
         
-        # Penambahan Kolom Status (V17 requirement)
         try: self.cursor.execute("ALTER TABLE sessions ADD COLUMN tx_fwd_power TEXT"); broadcast_log("DB", "Added col: tx_fwd_power", "UPDATE")
         except: pass
         try: self.cursor.execute("ALTER TABLE sessions ADD COLUMN tx_ref_power TEXT")
@@ -104,8 +110,6 @@ class DatabaseManager:
     def save_session(self, station, evidence, raw, parsed, tx_info=None):
         try:
             ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Default Values
             fwd, ref, stat = "-", "-", "MONITORING"
             
             if tx_info:
@@ -138,7 +142,7 @@ class DatabaseManager:
     def close(self):
         if self.conn: self.conn.close()
 
-# --- COMPUTER VISION (V15.3 Logic) ---
+# --- COMPUTER VISION ---
 def locate_in_window(hwnd, template_path, threshold=0.55):
     if not os.path.exists(template_path): return None
     try:
@@ -195,7 +199,6 @@ class HybridBatikRobot:
         return keyword.upper() in title
 
     def start_and_login(self):
-        # Logika Login V15.3 (Sudah stabil)
         broadcast_log("SYSTEM", "Starting PMDT...", "INIT")
         try: self.app = Application(backend="win32").connect(path=config.PATH_PMDT); self.force_anchor_window()
         except: 
@@ -223,7 +226,6 @@ class HybridBatikRobot:
             broadcast_log("SYSTEM", "Already Logged In", "OK")
 
     def connect_tool(self, station, image_file, expected_keyword):
-        # Logika Connect V15.3 (Restore Timing Original)
         self.force_anchor_window()
         
         if not self.check_title("PC REMOTE"):
@@ -239,20 +241,21 @@ class HybridBatikRobot:
         for attempt in range(2):
             pos = locate_in_window(self.hwnd, img_path)
             if pos:
-                # --- TIMING V15.3 (RESTORED) ---
                 pyautogui.moveTo(pos)
                 pyautogui.click()
                 time.sleep(0.3)
                 pyautogui.rightClick()
-                time.sleep(0.4) # Timing V15.3
+                time.sleep(0.4)
                 pyautogui.press("down")
                 time.sleep(0.2)
                 pyautogui.press("enter")
-                # -------------------------------
 
                 for _ in range(20):
                     if self.check_title(expected_keyword):
                         broadcast_log(station, f"Connected: {expected_keyword}", "SUCCESS")
+                        # [PENTING] Delay Wajib agar menu tidak bug di Localizer
+                        broadcast_log(station, "Stabilizing UI (3s)...", "WAIT")
+                        time.sleep(3.0) 
                         return True
                     time.sleep(0.5)
                 break 
@@ -260,17 +263,21 @@ class HybridBatikRobot:
         return False
 
     def get_rms_status(self):
-        """Fitur Baru: RMS Status dengan Shortcut Sekuensial"""
-        broadcast_log("RMS", "Fetching Status (Alt, R, S)...", "CMD")
+        """Fitur Baru: RMS Status tanpa ESC, Timing Diperlambat"""
+        broadcast_log("RMS", "Fetching Status (Robust Mode)...", "CMD")
         
-        # Shortcut khusus untuk RMS sesuai request (Sequential)
+        # [REVISI] Menghapus penekanan ESC sesuai request
+        
+        # Sequence diperlambat agar aplikasi sempat merespon
         pyautogui.press("alt")
-        time.sleep(0.5)
-        pyautogui.press("r")
-        time.sleep(0.5)
-        pyautogui.press("s")
+        time.sleep(1.0)  # Delay lebih lama setelah Alt
         
-        time.sleep(1.5) # Tunggu popup
+        pyautogui.press("r") # Masuk menu Remote
+        time.sleep(0.8)  # Delay agar dropdown menu turun
+        
+        pyautogui.press("s") # Pilih Status
+        
+        time.sleep(2.0) # Tunggu popup muncul (diperpanjang)
         pyautogui.press("right") 
         time.sleep(0.5)
         
@@ -279,20 +286,18 @@ class HybridBatikRobot:
         time.sleep(0.5)
         status_text = pyperclip.paste()
         
-        pyautogui.press("esc")
+        pyautogui.press("esc") # Tutup popup status
         time.sleep(0.8) 
         return status_text
 
     def collect_data_sequence(self, station):
         self.force_anchor_window()
 
-        # === 1. RMS STATUS (NEW FEATURE) ===
-        # Dijalankan di awal, menggunakan fungsi barunya sendiri
+        # === 1. RMS STATUS ===
         raw_rms = self.get_rms_status()
         rms_header = "="*40 + "\nRMS STATUS SNAPSHOT\n" + "="*40 + "\n" + raw_rms + "\n" + "="*40 + "\nRAW DATA DETAILS\n" + "="*40 + "\n\n"
 
-        # === 2. MONITOR DATA (V15.3 LOGIC) ===
-        # Menggunakan HOTKEY (bukan sequential) karena di V15.3 sudah stabil
+        # === 2. MONITOR DATA ===
         broadcast_log(station, "Getting Monitor Data...", "CMD")
         pyautogui.hotkey("alt", "o")
         time.sleep(0.8) 
@@ -305,8 +310,7 @@ class HybridBatikRobot:
         raw_monitor = pyperclip.paste()
         img_mon_path = self.take_screenshot(station, "Monitor_Data")
 
-        # === 3. TRANSMITTER DATA (V15.3 LOGIC) ===
-        # Menggunakan HOTKEY (bukan sequential)
+        # === 3. TRANSMITTER DATA ===
         broadcast_log(station, "Getting Transmitter Data...", "CMD")
         pyautogui.hotkey("alt", "t")
         time.sleep(0.8)
@@ -323,17 +327,57 @@ class HybridBatikRobot:
         final_monitor_text = rms_header + raw_monitor
         final_transmitter_text = rms_header + raw_transmitter
         
-        # Save Monitor
         self.save_text_file(station, final_monitor_text, "Monitor_Data")
         parsed_mon = self.parse_monitor_text(raw_monitor) 
         tx_info_mon = self.parse_transmitter_with_status(raw_transmitter, raw_rms)
         self.db.save_session(station, img_mon_path, final_monitor_text, parsed_mon, tx_info=tx_info_mon)
         
-        # Save Transmitter
         self.save_text_file(station, final_transmitter_text, "Transmitter_Data")
         tx_info_tx = self.parse_transmitter_with_status(raw_transmitter, raw_rms)
         broadcast_log(station, f"TX Status: {tx_info_tx['status']} ({tx_info_tx['fwd']} W)", "INFO")
         self.db.save_session(station, img_tx_path, final_transmitter_text, None, tx_info=tx_info_tx)
+
+        # ===========================================================
+        # [AUTO-UPLOAD FEATURE]
+        # Logika tambahan tanpa mengganggu proses robot
+        # ===========================================================
+        try:
+            broadcast_log(station, "Uploading to Google Sheet...", "UPLOAD")
+            
+            # Tentukan Parser berdasarkan nama Station
+            rows_parsed = []
+            active_tx = 1
+            
+            if "LOCALIZER" in station or "GLIDE PATH" in station:
+                tool_type = "LOCALIZER" if "LOCALIZER" in station else "GLIDEPATH"
+                rows_parsed, active_tx = batik_parser.parse_pmdt_loc_gp(tool_type, final_monitor_text)
+                
+            elif "MIDDLE MARKER" in station or "OUTER MARKER" in station:
+                rows_parsed, active_tx = batik_parser.parse_pmdt_mm_om(final_monitor_text)
+            
+            if rows_parsed:
+                # Normalisasi Nama Station untuk Sheet Handler (LOC, GP, MM, OM)
+                tool_short = "LOC"
+                if "GLIDE" in station: tool_short = "GP"
+                elif "MIDDLE" in station: tool_short = "MM"
+                elif "OUTER" in station: tool_short = "OM"
+                
+                sid, gid, err = sheet_handler.upload_data_to_sheet(
+                    tool_short, 
+                    rows_parsed, 
+                    datetime.now(), 
+                    active_tx
+                )
+                if err:
+                    broadcast_log(station, f"Upload Failed: {err}", "ERROR")
+                else:
+                    broadcast_log(station, f"Uploaded (Tx: {active_tx})", "SUCCESS")
+            else:
+                broadcast_log(station, "No data parsed for upload", "SKIP")
+                
+        except Exception as e:
+            broadcast_log(station, f"Upload Error: {e}", "FAIL")
+        # ===========================================================
 
     def take_screenshot(self, station, data_type):
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -360,16 +404,13 @@ class HybridBatikRobot:
             f.write(content)
 
     def disconnect_tool(self):
-        # Logika Disconnect V15.3 (Restore Timing Original)
         self.force_anchor_window()
         broadcast_log("SYSTEM", "Disconnecting...", "CMD")
         
-        # Shortcut V15.3 (Hotkey)
         pyautogui.hotkey("alt", "s")
         time.sleep(0.8)
         pyautogui.press("d")
         
-        # Looping Validation (dari V15.3 yang Anda sukai)
         broadcast_log("SYSTEM", "Waiting for PC REMOTE...", "WAIT")
         for _ in range(20):
             if self.check_title("PC REMOTE"):
@@ -423,7 +464,7 @@ if __name__ == "__main__":
     import argparse
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 60)
-    print(" BATIK SYSTEM | PMDT ROBOT V17.4 (STABLE BASE)")
+    print(" BATIK SYSTEM | PMDT ROBOT V17.7 (STABLE + UPLOAD)")
     print("=" * 60)
 
     parser = argparse.ArgumentParser()

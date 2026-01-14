@@ -1,0 +1,37 @@
+========================================
+RMS STATUS SNAPSHOT
+========================================
+RMS Status
+Monitor/Transmitter Status - 01/15/26 03:35:47
+
+01/15/26 03:35:46                                                  _  Monitor Alarm Shutdown
+
+      Monitors                                                       Enabled Monitors
+                    Bypass     Alarm       Mismatch
+         Integral       _          _           _                         G  Monitor 1
+         Standby        _          _           _                         G  Monitor 2
+
+      Transmitters
+        Antenna Select              Main Select                 Transmitter On
+               G  Tx 1                     G  Tx 1                     G  Tx 1
+               _  Tx 2                     _  Tx 2                     G  Tx 2
+
+
+========================================
+RAW DATA DETAILS
+========================================
+
+Transmitter Data
+Power Sensor Data - 01/15/26 03:36:09
+
+01/15/26 03:36:08
+Transmitter 1
+ Forward Power                       0.58     Watts
+ Reflected Power                     0.00     Watts
+ VSWR                                1.00     : 1
+
+Transmitter 2
+ Forward Power                       0.68     Watts
+ Reflected Power                     0.00     Watts
+ VSWR                                1.00     : 1
+

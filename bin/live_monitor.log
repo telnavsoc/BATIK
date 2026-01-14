@@ -1,58 +1,23 @@
-12:10:42 | SYSTEM           | Eksekusi Robot: run_all.py
-12:10:42 | SYSTEM          | Starting PMDT...                         | INIT
-12:10:42 | SYSTEM          | Already Logged In                        | OK
-12:10:43 | LOCALIZER       | Scanning target...                       | SEARCH
-12:10:49 | LOCALIZER       | Connected: INDONESIA SOLO                | SUCCESS
-12:10:49 | RMS             | Fetching Status (Alt, R, S)...           | CMD
-12:10:56 | LOCALIZER       | Getting Monitor Data...                  | CMD
-12:10:58 | LOCALIZER       | Stabilizing (10s)                        | WAIT
-12:11:09 | LOCALIZER       | Getting Transmitter Data...              | CMD
-12:11:11 | LOCALIZER       | Stabilizing (5s)                         | WAIT
-12:11:17 | LOCALIZER       | Database Saved (WAL)                     | DONE
-12:11:17 | LOCALIZER       | TX Status: TX2 MAIN (14.4 W)             | INFO
-12:11:17 | LOCALIZER       | Database Saved (WAL)                     | DONE
-12:11:17 | SYSTEM          | Disconnecting...                         | CMD
-12:11:19 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-12:11:27 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-12:11:27 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-12:11:30 | LOCALIZER       | CYCLE COMPLETED                          | FINISH
-12:11:33 | SYSTEM          | Starting PMDT...                         | INIT
-12:11:33 | SYSTEM          | Already Logged In                        | OK
-12:11:35 | GLIDE PATH      | Scanning target...                       | SEARCH
-12:11:41 | GLIDE PATH      | Connected: 332.9                         | SUCCESS
-12:11:41 | RMS             | Fetching Status (Alt, R, S)...           | CMD
-12:11:48 | GLIDE PATH      | Getting Monitor Data...                  | CMD
-12:11:50 | GLIDE PATH      | Stabilizing (10s)                        | WAIT
-12:12:01 | GLIDE PATH      | Getting Transmitter Data...              | CMD
-12:12:03 | GLIDE PATH      | Stabilizing (5s)                         | WAIT
-12:12:09 | GLIDE PATH      | Database Saved (WAL)                     | DONE
-12:12:09 | GLIDE PATH      | TX Status: TX1 MAIN (2.48 W)             | INFO
-12:12:09 | GLIDE PATH      | Database Saved (WAL)                     | DONE
-12:12:09 | SYSTEM          | Disconnecting...                         | CMD
-12:12:11 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-12:12:18 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-12:12:18 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-12:12:21 | GLIDE PATH      | CYCLE COMPLETED                          | FINISH
-12:12:25 | SYSTEM          | Starting PMDT...                         | INIT
-12:12:25 | SYSTEM          | Already Logged In                        | OK
-12:12:26 | MIDDLE MARKER   | Scanning target...                       | SEARCH
-12:12:31 | MIDDLE MARKER   | Connected: MIDDLE MARKER                 | SUCCESS
-12:12:31 | RMS             | Fetching Status (Alt, R, S)...           | CMD
-12:12:39 | MIDDLE MARKER   | Getting Monitor Data...                  | CMD
-12:12:41 | MIDDLE MARKER   | Stabilizing (10s)                        | WAIT
-12:12:52 | MIDDLE MARKER   | Getting Transmitter Data...              | CMD
-12:12:53 | MIDDLE MARKER   | Stabilizing (5s)                         | WAIT
-12:13:00 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
-12:13:00 | MIDDLE MARKER   | TX Status: OFF / DUMMY (0.68 W)          | INFO
-12:13:00 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
-12:13:00 | SYSTEM          | Disconnecting...                         | CMD
-12:13:02 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-12:13:03 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-12:13:03 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-12:13:06 | MIDDLE MARKER   | CYCLE COMPLETED                          | FINISH
-12:13:09 | SYSTEM          | Starting PMDT...                         | INIT
-12:13:09 | SYSTEM          | Already Logged In                        | OK
-12:13:10 | OUTER MARKER    | Scanning target...                       | SEARCH
-12:13:13 | SYSTEM           | !!! EMERGENCY STOP DETECTED !!!
-12:13:13 | SYSTEM           | Killing Process Tree...
-12:13:13 | SYSTEM           | Menutup Curtain...
+03:36:35 | SYSTEM           | Eksekusi Robot: robot_pmdt.py
+03:36:36 | SYSTEM          | Starting PMDT...                         | INIT
+03:36:36 | SYSTEM          | Already Logged In                        | OK
+03:36:37 | MIDDLE MARKER   | Scanning target...                       | SEARCH
+03:36:43 | MIDDLE MARKER   | Connected: MIDDLE MARKER                 | SUCCESS
+03:36:43 | MIDDLE MARKER   | Stabilizing UI (3s)...                   | WAIT
+03:36:46 | RMS             | Fetching Status (Robust Mode)...         | CMD
+03:36:54 | MIDDLE MARKER   | Getting Monitor Data...                  | CMD
+03:36:56 | MIDDLE MARKER   | Stabilizing (10s)                        | WAIT
+03:37:07 | MIDDLE MARKER   | Getting Transmitter Data...              | CMD
+03:37:09 | MIDDLE MARKER   | Stabilizing (5s)                         | WAIT
+03:37:15 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
+03:37:15 | MIDDLE MARKER   | TX Status: OFF / DUMMY (0.67 W)          | INFO
+03:37:15 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
+03:37:15 | MIDDLE MARKER   | Uploading to Google Sheet...             | UPLOAD
+03:37:19 | MIDDLE MARKER   | Uploaded (Tx: 2)                         | SUCCESS
+03:37:19 | SYSTEM          | Disconnecting...                         | CMD
+03:37:21 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
+03:37:22 | SYSTEM          | State Confirmed: PC REMOTE               | OK
+03:37:22 | SYSTEM          | Safety Delay (3s)...                     | WAIT
+03:37:25 | MIDDLE MARKER   | CYCLE COMPLETED                          | FINISH
+03:37:25 | SYSTEM           | Tugas Robot Selesai.
+03:37:25 | SYSTEM           | Menutup Curtain...
