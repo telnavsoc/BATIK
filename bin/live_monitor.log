@@ -1,23 +1,97 @@
-03:36:35 | SYSTEM           | Eksekusi Robot: robot_pmdt.py
-03:36:36 | SYSTEM          | Starting PMDT...                         | INIT
-03:36:36 | SYSTEM          | Already Logged In                        | OK
-03:36:37 | MIDDLE MARKER   | Scanning target...                       | SEARCH
-03:36:43 | MIDDLE MARKER   | Connected: MIDDLE MARKER                 | SUCCESS
-03:36:43 | MIDDLE MARKER   | Stabilizing UI (3s)...                   | WAIT
-03:36:46 | RMS             | Fetching Status (Robust Mode)...         | CMD
-03:36:54 | MIDDLE MARKER   | Getting Monitor Data...                  | CMD
-03:36:56 | MIDDLE MARKER   | Stabilizing (10s)                        | WAIT
-03:37:07 | MIDDLE MARKER   | Getting Transmitter Data...              | CMD
-03:37:09 | MIDDLE MARKER   | Stabilizing (5s)                         | WAIT
-03:37:15 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
-03:37:15 | MIDDLE MARKER   | TX Status: OFF / DUMMY (0.67 W)          | INFO
-03:37:15 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
-03:37:15 | MIDDLE MARKER   | Uploading to Google Sheet...             | UPLOAD
-03:37:19 | MIDDLE MARKER   | Uploaded (Tx: 2)                         | SUCCESS
-03:37:19 | SYSTEM          | Disconnecting...                         | CMD
-03:37:21 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-03:37:22 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-03:37:22 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-03:37:25 | MIDDLE MARKER   | CYCLE COMPLETED                          | FINISH
-03:37:25 | SYSTEM           | Tugas Robot Selesai.
-03:37:25 | SYSTEM           | Menutup Curtain...
+17:42:32 | SYSTEM           | Eksekusi Robot: run_all.py
+17:42:33 | SYSTEM          | Starting PMDT...                         | INIT
+17:42:33 | SYSTEM          | Already Logged In                        | OK
+17:42:34 | LOCALIZER       | Scanning target...                       | SEARCH
+17:42:39 | LOCALIZER       | Connected: 111.50                        | SUCCESS
+17:42:39 | LOCALIZER       | Stabilizing UI (3s)...                   | WAIT
+17:42:42 | RMS             | Fetching Status (Robust Mode)...         | CMD
+17:42:51 | LOCALIZER       | Getting Monitor Data...                  | CMD
+17:42:53 | LOCALIZER       | Stabilizing (10s)                        | WAIT
+17:43:04 | LOCALIZER       | Getting Transmitter Data...              | CMD
+17:43:06 | LOCALIZER       | Stabilizing (5s)                         | WAIT
+17:43:12 | LOCALIZER       | Database Saved (WAL)                     | DONE
+17:43:12 | LOCALIZER       | TX Status: TX1 MAIN (14.4 W)             | INFO
+17:43:12 | LOCALIZER       | Database Saved (WAL)                     | DONE
+17:43:12 | LOCALIZER       | Uploading to Google Sheet...             | UPLOAD
+17:43:17 | LOCALIZER       | Uploaded (Tx: 1)                         | SUCCESS
+17:43:17 | SYSTEM          | Disconnecting...                         | CMD
+17:43:18 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
+17:43:26 | SYSTEM          | State Confirmed: PC REMOTE               | OK
+17:43:26 | SYSTEM          | Safety Delay (3s)...                     | WAIT
+17:43:29 | LOCALIZER       | CYCLE COMPLETED                          | FINISH
+17:43:33 | SYSTEM          | Starting PMDT...                         | INIT
+17:43:33 | SYSTEM          | Already Logged In                        | OK
+17:43:34 | GLIDE PATH      | Scanning target...                       | SEARCH
+17:43:40 | GLIDE PATH      | Connected: 332.9                         | SUCCESS
+17:43:40 | GLIDE PATH      | Stabilizing UI (3s)...                   | WAIT
+17:43:43 | RMS             | Fetching Status (Robust Mode)...         | CMD
+17:43:51 | GLIDE PATH      | Getting Monitor Data...                  | CMD
+17:43:53 | GLIDE PATH      | Stabilizing (10s)                        | WAIT
+17:44:04 | GLIDE PATH      | Getting Transmitter Data...              | CMD
+17:44:06 | GLIDE PATH      | Stabilizing (5s)                         | WAIT
+17:44:12 | GLIDE PATH      | Database Saved (WAL)                     | DONE
+17:44:12 | GLIDE PATH      | TX Status: TX1 MAIN (2.48 W)             | INFO
+17:44:12 | GLIDE PATH      | Database Saved (WAL)                     | DONE
+17:44:12 | GLIDE PATH      | Uploading to Google Sheet...             | UPLOAD
+17:44:17 | GLIDE PATH      | Uploaded (Tx: 1)                         | SUCCESS
+17:44:17 | SYSTEM          | Disconnecting...                         | CMD
+17:44:18 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
+17:44:32 | SYSTEM          | Starting PMDT...                         | INIT
+17:44:32 | SYSTEM          | Already Logged In                        | OK
+17:44:33 | MIDDLE MARKER   | Scanning target...                       | SEARCH
+17:44:39 | MIDDLE MARKER   | Connected: MIDDLE MARKER                 | SUCCESS
+17:44:39 | MIDDLE MARKER   | Stabilizing UI (3s)...                   | WAIT
+17:44:42 | RMS             | Fetching Status (Robust Mode)...         | CMD
+17:44:50 | MIDDLE MARKER   | Getting Monitor Data...                  | CMD
+17:44:52 | MIDDLE MARKER   | Stabilizing (10s)                        | WAIT
+17:45:03 | MIDDLE MARKER   | Getting Transmitter Data...              | CMD
+17:45:05 | MIDDLE MARKER   | Stabilizing (5s)                         | WAIT
+17:45:11 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
+17:45:11 | MIDDLE MARKER   | TX Status: OFF / DUMMY (0.68 W)          | INFO
+17:45:11 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
+17:45:11 | MIDDLE MARKER   | Uploading to Google Sheet...             | UPLOAD
+17:45:16 | MIDDLE MARKER   | Uploaded (Tx: 2)                         | SUCCESS
+17:45:16 | SYSTEM          | Disconnecting...                         | CMD
+17:45:17 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
+17:45:19 | SYSTEM          | State Confirmed: PC REMOTE               | OK
+17:45:19 | SYSTEM          | Safety Delay (3s)...                     | WAIT
+17:45:22 | MIDDLE MARKER   | CYCLE COMPLETED                          | FINISH
+17:45:25 | SYSTEM          | Starting PMDT...                         | INIT
+17:45:26 | SYSTEM          | Already Logged In                        | OK
+17:45:27 | OUTER MARKER    | Scanning target...                       | SEARCH
+17:45:32 | OUTER MARKER    | Connected: OUTER MARKER                  | SUCCESS
+17:45:32 | OUTER MARKER    | Stabilizing UI (3s)...                   | WAIT
+17:45:35 | RMS             | Fetching Status (Robust Mode)...         | CMD
+17:45:44 | OUTER MARKER    | Getting Monitor Data...                  | CMD
+17:45:46 | OUTER MARKER    | Stabilizing (10s)                        | WAIT
+17:45:57 | OUTER MARKER    | Getting Transmitter Data...              | CMD
+17:45:58 | OUTER MARKER    | Stabilizing (5s)                         | WAIT
+17:46:05 | OUTER MARKER    | Database Saved (WAL)                     | DONE
+17:46:05 | OUTER MARKER    | TX Status: BOTH ON (2.35 W)              | INFO
+17:46:05 | OUTER MARKER    | Database Saved (WAL)                     | DONE
+17:46:05 | OUTER MARKER    | Uploading to Google Sheet...             | UPLOAD
+17:46:09 | OUTER MARKER    | Uploaded (Tx: 2)                         | SUCCESS
+17:46:09 | SYSTEM          | Disconnecting...                         | CMD
+17:46:11 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
+17:46:12 | SYSTEM          | State Confirmed: PC REMOTE               | OK
+17:46:12 | SYSTEM          | Safety Delay (3s)...                     | WAIT
+17:46:15 | OUTER MARKER    | CYCLE COMPLETED                          | FINISH
+17:46:19 | DVOR            | Finding Window...                        | SEARCH
+17:46:21 | DVOR            | Saving Log (TXT)                         | PROCESS
+17:46:28 | DVOR            | Printing Evidence (PDF)                  | PROCESS
+17:46:42 | DVOR            | Finalizing PDF (5s)...                   | WAIT
+17:46:47 | DVOR            | Database Saved (WAL)                     | DONE
+17:46:47 | DVOR            | Header Detect: TX 2                      | INFO
+17:46:47 | DVOR            | Uploading to Sheet...                    | UPLOAD
+17:46:51 | DVOR            | Uploaded (Tx: 2)                         | SUCCESS
+17:46:51 | DVOR            | Job Completed                            | SUCCESS
+17:46:54 | DME             | Finding Window...                        | SEARCH
+17:46:56 | DME             | Saving Log (TXT)                         | PROCESS
+17:47:04 | DME             | Printing Evidence (PDF)                  | PROCESS
+17:47:18 | DME             | Finalizing PDF (5s)...                   | WAIT
+17:47:23 | DME             | Database Saved (WAL)                     | DONE
+17:47:23 | DME             | Uploading to Sheet...                    | UPLOAD
+17:47:26 | DME             | Uploaded (Tx: 1)                         | SUCCESS
+17:47:26 | DME             | Job Completed                            | SUCCESS
+17:47:30 | SYSTEM           | Tugas Robot Selesai.
+17:47:30 | SYSTEM           | Menutup Curtain...

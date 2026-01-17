@@ -1,0 +1,48 @@
+========================================
+RMS STATUS SNAPSHOT
+========================================
+RMS Status
+Monitor/Transmitter Status - 01/17/26 16:59:16
+
+01/17/26 16:59:15             _  Certification Test Enabled        _  Monitor Alarm Shutdown
+
+      Monitors                                                       Enabled Monitors
+                    Bypass     Alarm       Mismatch
+         Integral       _          _           _                         G  Monitor 1
+         Standby        _          _           _                         G  Monitor 2
+                                                                         _  Monitor 3
+                                                                         _  Monitor 4
+
+      Transmitters
+        Antenna Select              Main Select                 Transmitter On
+               G  Tx 1                     G  Tx 1                     G  Tx 1
+               _  Tx 2                     _  Tx 2                     _  Tx 2
+
+
+========================================
+RAW DATA DETAILS
+========================================
+
+All Monitor Data
+Integral - 01/17/26 16:59:30
+
+                        01/17/26 16:59:28    01/17/26 16:59:27
+                           Monitor 1            Monitor 2
+Course
+ Path RF Level                103.9                103.9                                                 %
+ Path DDM                     -0.026               -0.027                                                DDM
+ Path SDM                     80.4                 80.3                                                  %
+
+ Width DDM                    0.174                0.174                                                 DDM
+
+ Synth Lock / Rev Sense        _    _              _    _
+
+Clearance
+ RF Level                     104.1                103.8                                                 %
+
+ 150Hz Mod Percent            79.4                 79.5                                                  %
+
+ Synth Lock                    _                   _
+
+RF Freq Difference            8000                 7999                                                  Hz
+
