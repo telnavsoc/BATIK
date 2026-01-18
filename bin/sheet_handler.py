@@ -1,6 +1,6 @@
 # FILE: bin/sheet_handler.py
 # ================================================================
-# GOOGLE SHEET HANDLER - V8 (FINAL CALIBRATION)
+# GOOGLE SHEET HANDLER - V8.2 (FORCE UNHIDE API)
 # ================================================================
 
 import gspread
@@ -14,12 +14,9 @@ CREDENTIALS_FILE = os.path.join(BASE_DIR, "credentials.json")
 
 # --- KALIBRASI SMART OFFSET ---
 OFFSET_CONFIG = {
-    # KELOMPOK NAIK 1 BARIS (Offset dikurangi jadi 3)
     "DVOR": 3,
     "MM":   3,
     "OM":   3,
-    
-    # KELOMPOK SUDAH OK (Offset tetap 3 & 4)
     "DME":  3, 
     "LOC":  4, 
     "GP":   4  
@@ -86,16 +83,51 @@ def get_or_create_monthly_sheet(sh, tool_type, date_obj):
     month_str = date_obj.strftime("%b %Y").upper()
     tab_name = f"{tool_type} {month_str}"
     template_name = f"TEMPLATE_{tool_type}"
+    
+    # 1. Coba Buka Sheet
     try:
         ws = sh.worksheet(tab_name)
+        # Jika sheet ada, pastikan UNHIDE (Jaga-jaga jika sebelumnya ter-hide)
+        try:
+            sh.batch_update({
+                "requests": [{
+                    "updateSheetProperties": {
+                        "properties": {"sheetId": ws.id, "hidden": False},
+                        "fields": "hidden"
+                    }
+                }]
+            })
+        except: pass
         return ws, None
+        
+    # 2. Jika Tidak Ada, Buat Baru
     except:
         try:
             template = sh.worksheet(template_name)
             new_sheet = sh.duplicate_sheet(template.id, insert_sheet_index=0, new_sheet_name=tab_name)
+            
+            # [REVISI: FORCE UNHIDE API] 
+            # Menggunakan batch_update langsung ke Spreadsheet (Lebih Kuat)
+            # Ini akan memaksa sheet muncul meskipun Template-nya Hidden
+            try:
+                sh.batch_update({
+                    "requests": [{
+                        "updateSheetProperties": {
+                            "properties": {
+                                "sheetId": new_sheet.id,
+                                "hidden": False
+                            },
+                            "fields": "hidden"
+                        }
+                    }]
+                })
+                print(f"[SHEET] {tab_name} berhasil di-Unhide.")
+            except Exception as e:
+                print(f"[WARN] Gagal Unhide sheet: {e}")
+            
             update_period_label(new_sheet, date_obj)
             return new_sheet, None
-        except: return None, f"Template {template_name} tidak ditemukan."
+        except Exception as e: return None, f"Template {template_name} error: {str(e)}"
 
 def find_safe_anchor(worksheet, day):
     try:
@@ -155,7 +187,6 @@ def upload_data_to_sheet(tool_raw_name, rows_data, target_date=None, active_tx=1
 
     for row in rows_data:
         p = row.get('Parameter')
-        # Logic Deteksi Section LOC/GP
         if tool_type in ["LOC", "GP"] and "RF Level" in p and "Path" not in p and "Centerline" not in p: 
              is_clearance = True
         

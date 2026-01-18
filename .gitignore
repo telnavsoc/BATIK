@@ -1,4 +1,36 @@
+# --- Security (WAJIB) ---
 credentials.json
 *.key
+client_secret.json
+
+# --- Python System Files ---
+__pycache__/
+*.pyc
+
+# --- Database (Data Lokal) ---
 *.db
-live_monitor.log
+*.sqlite
+*.sqlite3
+data/*.db
+_archive/
+
+# --- Robot Logs (Berubah setiap detik) ---
+*.log
+logs/
+bin/live_monitor.log
+bin/current_status.txt
+
+# --- Output Files (Hasil Generate) ---
+# Mengabaikan seluruh folder output
+output/
+
+# Atau jika ingin spesifik per ekstensi file di mana saja:
+*.pdf
+*.png
+*.jpg
+*.jpeg
+# Hati-hati meng-ignore .txt atau .csv jika ada file config yg pakai ekstensi ini
+# Tapi untuk output laporan, sebaiknya di-ignore:
+*_Monitor_Data_*.txt
+*_Transmitter_Data_*.txt
+LOGBOOK_BATIK*.csv
