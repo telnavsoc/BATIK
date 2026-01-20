@@ -1,6 +1,6 @@
 # FILE: bin/robot_pmdt.py
 # =============================================================================
-# BATIK PMDT ROBOT V17.7 (STABLE + AUTO UPLOAD)
+# BATIK PMDT ROBOT V18.1 (FULL DATA MERGE REVISION)
 # =============================================================================
 
 import sys
@@ -217,7 +217,7 @@ class HybridBatikRobot:
             pyautogui.press("n")
             time.sleep(1.5); pyautogui.press("enter")
             time.sleep(1.5)
-            pyautogui.write("q"); pyautogui.press("tab"); pyautogui.write("qqqq"); pyautogui.press("tab"); pyautogui.press("enter")
+            pyautogui.write("batik"); pyautogui.press("tab"); pyautogui.write("batik"); pyautogui.press("tab"); pyautogui.press("enter")
             time.sleep(3)
             
             if self.check_title("PC REMOTE"): broadcast_log("SYSTEM", "Login Successful", "OK")
@@ -253,7 +253,6 @@ class HybridBatikRobot:
                 for _ in range(20):
                     if self.check_title(expected_keyword):
                         broadcast_log(station, f"Connected: {expected_keyword}", "SUCCESS")
-                        # [PENTING] Delay Wajib agar menu tidak bug di Localizer
                         broadcast_log(station, "Stabilizing UI (3s)...", "WAIT")
                         time.sleep(3.0) 
                         return True
@@ -266,14 +265,12 @@ class HybridBatikRobot:
         """Fitur Baru: RMS Status tanpa ESC, Timing Diperlambat"""
         broadcast_log("RMS", "Fetching Status (Robust Mode)...", "CMD")
         
-        # [REVISI] Menghapus penekanan ESC sesuai request
-        
         # Sequence diperlambat agar aplikasi sempat merespon
         pyautogui.press("alt")
-        time.sleep(1.0)  # Delay lebih lama setelah Alt
+        time.sleep(1.0) 
         
         pyautogui.press("r") # Masuk menu Remote
-        time.sleep(0.8)  # Delay agar dropdown menu turun
+        time.sleep(0.8) 
         
         pyautogui.press("s") # Pilih Status
         
@@ -323,60 +320,72 @@ class HybridBatikRobot:
         raw_transmitter = pyperclip.paste()
         img_tx_path = self.take_screenshot(station, "Transmitter_Data")
 
-        # === 4. SAVE & PARSE ===
+        # === 4. SAVE & PARSE (HYBRID LOGIC) ===
         final_monitor_text = rms_header + raw_monitor
         final_transmitter_text = rms_header + raw_transmitter
         
+        # Save TXT Files to PC (Standard Archiving)
         self.save_text_file(station, final_monitor_text, "Monitor_Data")
+        self.save_text_file(station, final_transmitter_text, "Transmitter_Data")
+        
+        # Save to SQLite (Standard DB Logic - Keeping it safe)
         parsed_mon = self.parse_monitor_text(raw_monitor) 
         tx_info_mon = self.parse_transmitter_with_status(raw_transmitter, raw_rms)
         self.db.save_session(station, img_mon_path, final_monitor_text, parsed_mon, tx_info=tx_info_mon)
         
-        self.save_text_file(station, final_transmitter_text, "Transmitter_Data")
         tx_info_tx = self.parse_transmitter_with_status(raw_transmitter, raw_rms)
         broadcast_log(station, f"TX Status: {tx_info_tx['status']} ({tx_info_tx['fwd']} W)", "INFO")
         self.db.save_session(station, img_tx_path, final_transmitter_text, None, tx_info=tx_info_tx)
 
         # ===========================================================
-        # [AUTO-UPLOAD FEATURE]
-        # Logika tambahan tanpa mengganggu proses robot
+        # [AUTO-UPLOAD FEATURE] - METODE: RAW DATABASE REVISION
         # ===========================================================
         try:
-            broadcast_log(station, "Uploading to Google Sheet...", "UPLOAD")
+            broadcast_log(station, "Backing up to Raw Database...", "UPLOAD")
             
-            # Tentukan Parser berdasarkan nama Station
+            # --- SUPER MERGE (KEY REVISION) ---
+            # Menggabungkan data Monitor dan Transmitter agar Parser bisa membaca semuanya
+            combined_text_for_parsing = final_monitor_text + "\n\n" + final_transmitter_text
+            
+            # 1. PARSING DATA (Menggunakan Combined Text)
             rows_parsed = []
             active_tx = 1
             
             if "LOCALIZER" in station or "GLIDE PATH" in station:
                 tool_type = "LOCALIZER" if "LOCALIZER" in station else "GLIDEPATH"
-                rows_parsed, active_tx = batik_parser.parse_pmdt_loc_gp(tool_type, final_monitor_text)
+                rows_parsed, active_tx = batik_parser.parse_pmdt_loc_gp(tool_type, combined_text_for_parsing)
                 
             elif "MIDDLE MARKER" in station or "OUTER MARKER" in station:
-                rows_parsed, active_tx = batik_parser.parse_pmdt_mm_om(final_monitor_text)
+                tool_type = "MM" if "MIDDLE" in station else "OM"
+                # Menggunakan parse_pmdt_common agar tipe alat terdeteksi
+                rows_parsed, active_tx = batik_parser.parse_pmdt_common(tool_type, combined_text_for_parsing)
             
+            # 2. UPLOAD JIKA DATA ADA
             if rows_parsed:
-                # Normalisasi Nama Station untuk Sheet Handler (LOC, GP, MM, OM)
+                # Normalisasi Nama Station agar Sheet Handler paham
                 tool_short = "LOC"
                 if "GLIDE" in station: tool_short = "GP"
                 elif "MIDDLE" in station: tool_short = "MM"
                 elif "OUTER" in station: tool_short = "OM"
                 
-                sid, gid, err = sheet_handler.upload_data_to_sheet(
+                # --- PANGGIL FUNGSI UPLOAD RAW ---
+                status, err = sheet_handler.upload_raw_data(
                     tool_short, 
                     rows_parsed, 
                     datetime.now(), 
                     active_tx
                 )
-                if err:
-                    broadcast_log(station, f"Upload Failed: {err}", "ERROR")
+                
+                if status == "Success":
+                    broadcast_log(station, f"Raw DB Updated ({len(rows_parsed)} items)", "SUCCESS")
                 else:
-                    broadcast_log(station, f"Uploaded (Tx: {active_tx})", "SUCCESS")
+                    broadcast_log(station, f"Upload Error: {err}", "ERROR")
             else:
                 broadcast_log(station, "No data parsed for upload", "SKIP")
                 
         except Exception as e:
-            broadcast_log(station, f"Upload Error: {e}", "FAIL")
+            broadcast_log(station, f"Upload Logic Error: {e}", "FAIL")
+            logging.error(traceback.format_exc())
         # ===========================================================
 
     def take_screenshot(self, station, data_type):
@@ -445,8 +454,8 @@ class HybridBatikRobot:
                 info["fwd"] = str(max_power)
         except: pass
 
-        tx1_active = "G  Tx 1" in status_text
-        tx2_active = "G  Tx 2" in status_text
+        tx1_active = "G  Tx 1" in status_text
+        tx2_active = "G  Tx 2" in status_text
         try: current_power = float(info["fwd"])
         except: current_power = 0.0
         
@@ -464,7 +473,7 @@ if __name__ == "__main__":
     import argparse
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 60)
-    print(" BATIK SYSTEM | PMDT ROBOT V17.7 (STABLE + UPLOAD)")
+    print(" BATIK SYSTEM | PMDT ROBOT V18.1 (FULL MERGE)")
     print("=" * 60)
 
     parser = argparse.ArgumentParser()

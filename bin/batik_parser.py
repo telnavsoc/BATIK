@@ -1,226 +1,290 @@
 # FILE: bin/batik_parser.py
-# ================================================================
-# BATIK PARSER V46 (HYBRID: V44 FOR LOC/GP + V40.1 INDEX FOR MM/OM)
-# ================================================================
+# =============================================================================
+# BATIK PARSER V19.0 (LOC SBO FIX & ACTIVE TX HEADER)
+# =============================================================================
 import re
 
-def insert_space_unit(value):
-    """Menambahkan spasi antara angka dan unit. Contoh: 30.0% -> 30.0 %"""
-    if not value or value == "-": return value
-    if " " in value: return value
-    return re.sub(r"([\d\.]+)([a-zA-Z%°]+)", r"\1 \2", value)
-
-def detect_active_tx(tool_type, raw_text):
-    """Deteksi Tx Aktif."""
-    if "DVOR" in tool_type or "220" in tool_type:
-        if re.search(r"\[PDF_EVIDENCE\].*TX2", raw_text, re.IGNORECASE): return 2
-        if re.search(r"\[PDF_EVIDENCE\].*TX1", raw_text, re.IGNORECASE): return 1
-        if re.search(r"Active\s*TX\s*[:\-]?\s*2", raw_text, re.IGNORECASE): return 2
-        return 1 
-    elif "DME" in tool_type:
-        lines = raw_text.splitlines()
-        for i in range(min(10, len(lines))):
-            line = lines[i]
-            if "#Active" in line or "# Active" in line:
-                if "TXP2" in line or "TX2" in line or "TXP 2" in line: return 2
-                return 1 
-        return 1
-    if tool_type in ["LOCALIZER", "GLIDEPATH", "MM", "OM", "PMDT"]:
-        if re.search(r"^\s*G\s+Tx\s+2", raw_text, re.MULTILINE): return 2
-        elif re.search(r"^\s*G\s+Tx\s+1", raw_text, re.MULTILINE): return 1
-    return 1
-
-def parse_maru_data(tool_name, raw_text):
-    active_tx = detect_active_tx(tool_name, raw_text)
-    rows = []
+def normalize_with_unit(val):
+    """Menstandarisasi nilai agar memiliki satuan dengan spasi."""
+    if not val or val.strip() in ["-", "", "_"]: return "-"
+    val = val.strip()
     
-    if "DVOR" in tool_name.upper() or "220" in tool_name:
-        data = {}
-        relevant_text = raw_text.split("MON Major Measurement")[-1] if "MON Major Measurement" in raw_text else raw_text
-        lines = relevant_text.splitlines()
-        for line in lines:
-            line = line.strip()
-            if not line or line.startswith(("[", "#", ";")): continue
-            parts = re.split(r'\s{2,}', line)
-            if len(parts) >= 2:
-                k = parts[0].strip()
-                v1 = insert_space_unit(parts[1].strip())
-                v2 = insert_space_unit(parts[2].strip()) if len(parts) > 2 else ""
-                data[k.lower()] = {"m1": v1, "m2": v2}
-        schema = ["Status", "IDENT Code", "CARRIER Frequency", "USB Frequency", "LSB Frequency", "CARRIER Output Power", "RF Input Level", "Azimuth", "9960Hz FM Index", "30Hz AM Modulation Depth", "9960Hz AM Modulation Depth", "1020Hz AM Modulation Depth"]
-        for req in schema:
-            for k_raw, vals in data.items():
-                if req.lower() in k_raw:
-                    if "LSB" in req and "lsb" not in k_raw: continue
-                    if "USB" in req and "usb" not in k_raw: continue
-                    if "CARRIER" in req and "carrier" not in k_raw: continue
-                    rows.append({"Parameter": req, "Monitor 1": vals["m1"], "Monitor 2": vals["m2"]})
-                    break
-        return rows, active_tx
+    if re.match(r"^[A-Za-z\s/]+$", val) and not any(c.isdigit() for c in val):
+        return val
 
-    if "DME" in tool_name or "320" in tool_name:
-        data_map = {}
-        lines = raw_text.splitlines()
-        in_monitor_section = False
-        target_params = ["IDENT Code", "Output Power", "Frequency", "System Delay", "Reply Pulse Spacing", "Reply Efficiency", "Reply Pulse Rate", "Reply Pulse Rise Time", "Reply Pulse Decay Time", "Reply Pulse Duration"]
-        for line in lines:
-            clean = line.strip()
-            if "MON Major Measurement" in clean: in_monitor_section = True; continue
-            if in_monitor_section and clean.startswith(";") and "MON Major" not in clean: in_monitor_section = False
-            if in_monitor_section:
-                parts = re.split(r'\s{2,}', clean)
-                if len(parts) >= 2:
-                    key = parts[0].strip()
-                    val1 = parts[1].strip()
-                    val2 = parts[2].strip() if len(parts) > 2 else "-"
-                    data_map[key] = {"m1": insert_space_unit(val1), "m2": insert_space_unit(val2)}
-        for p in target_params:
-            found = False
-            for k_log in data_map:
-                if k_log.startswith(p):
-                    rows.append({"Parameter": p, "Monitor 1": data_map[k_log]["m1"], "Monitor 2": data_map[k_log]["m2"]})
-                    found = True; break
-            if not found: rows.append({"Parameter": p, "Monitor 1": "-", "Monitor 2": "-"})
-        return rows, active_tx
+    val = re.sub(r"\s*(Watts|Watt|W)\b", " W", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(Volts|Volt|V)\b", " V", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(Amps|Amp|A)\b", " A", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(degs|deg)\b", " deg", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(%)\b", " %", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(Hz)\b", " Hz", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(MHz)\b", " MHz", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(DDM)\b", " DDM", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(dB)\b", " dB", val, flags=re.IGNORECASE)
 
-    if tool_name in ["LOCALIZER", "GLIDEPATH", "LOC", "GP"]:
-        return parse_pmdt_loc_gp(tool_name, raw_text)
-    else:
-        return parse_pmdt_mm_om(raw_text)
+    return re.sub(r"\s+", " ", val).strip()
 
-# =========================================================================
-# LOGIKA V44: Right-to-Left Parsing (Cocok untuk LOC & GP)
-# =========================================================================
-def parse_pmdt_loc_gp(tool_type, raw_text):
-    active_tx = detect_active_tx(tool_type, raw_text)
-    rows = []
+# =============================================================================
+# DEFINISI URUTAN PARAMETER (Active TX Added for DVOR/DME)
+# =============================================================================
+ORDERED_PARAMS = {
+    "DVOR": [
+        "Active TX", # NEW HEADER
+        "Status", "IDENT Code", "CARRIER Frequency", "USB Frequency", "LSB Frequency",
+        "CARRIER Output Power", "RF Input Level", "Azimuth", "9960Hz FM Index",
+        "30Hz AM Modulation Depth", "9960Hz AM Modulation Depth", "1020Hz AM Modulation Depth",
+        "USB SIN Output Power", "USB COS Output Power", "LSB SIN Output Power", "LSB COS Output Power",
+        "CPA Temperature", "MSG Temperature",
+        "DC +5V", "DC +7V", "DC +15V", "DC +28V", "DC -15V",
+        "Current DC +5V", "Current DC +7V", "Current DC +15V", "Current DC +28V", "Current DC -15V",
+        "AC +28V", "Current AC +28V", "Battery +24V", "Current Battery +24V"
+    ],
+    "DME": [
+        "Active TX", # NEW HEADER
+        "IDENT Code", "Output Power", "Frequency", "System Delay", "Reply Pulse Spacing",
+        "Reply Efficiency", "Reply Pulse Rate", "Reply Pulse Rise Time", "Reply Pulse Decay Time",
+        "Reply Pulse Duration", "HPA Temperature", "LPA Temperature",
+        "AC/DC Status", "AC/DC Voltage", "AC/DC Current",
+        "DC/DC Status", "DC/DC Voltage", "DC/DC Current",
+        "Battery Status", "Battery Voltage", "Battery Current"
+    ],
+    "LOC": [
+        "Antenna Select", "Main Select", "Transmitter On",
+        "Course - Centerline RF Level", "Course - Centerline DDM", "Course - Centerline SDM",
+        "Course - Ident Mod Percent", "Course - Width DDM", "Course - Ident Status",
+        "Clearance - RF Level", "Clearance - Clearance 1 DDM", "Clearance - SDM",
+        "Clearance - Ident Mod Percent", "Clearance - Clearance 2 DDM", "Clearance - Ident Status",
+        "Clearance - RF Freq Difference", "Clearance - Antenna Fault",
+        "Course CSB Forward Power", "Course CSB Reflected Power",
+        "Course SBO Forward Power", "Course SBO Reflected Power",
+        "Clearance CSB Forward Power", "Clearance CSB Reflected Power",
+        "Clearance SBO Forward Power", "Clearance SBO Reflected Power",
+        "Standby Course CSB Forward Power", "Standby Course SBO Forward Power",
+        "Standby Clearance CSB Forward Power", "Standby Clearance SBO Forward Power"
+    ],
+    "GP": [
+        "Antenna Select", "Main Select", "Transmitter On",
+        "Course - Path RF Level", "Course - Path DDM", "Course - Path SDM", "Course - Width DDM",
+        "Clearance - RF Level", "Clearance - 150Hz Mod Percent", "Clearance - Synth Lock", "Clearance - RF Freq Difference",
+        "Course CSB Forward Power", "Course CSB Reflected Power",
+        "Course SBO Forward Power", "Course SBO Reflected Power",
+        "Clearance Forward Power", "Clearance Reflected Power",
+        "Standby Course CSB Forward Power", "Standby Course SBO Forward Power",
+        "Standby Clearance Forward Power",
+        "Upper Antenna Forward Power", "Middle Antenna Forward Power", "Lower Antenna Forward Power"
+    ],
+    "MM": [
+        "Antenna Select", "Main Select", "Transmitter On", "RF Level", "Ident Modulation",
+        "Transmitter 1 Forward Power", "Transmitter 1 Reflected Power", "Transmitter 1 VSWR",
+        "Transmitter 2 Forward Power", "Transmitter 2 Reflected Power", "Transmitter 2 VSWR"
+    ],
+    "OM": [
+        "Antenna Select", "Main Select", "Transmitter On", "RF Level", "Ident Modulation",
+        "Transmitter 1 Forward Power", "Transmitter 1 Reflected Power", "Transmitter 1 VSWR",
+        "Transmitter 2 Forward Power", "Transmitter 2 Reflected Power", "Transmitter 2 VSWR"
+    ]
+}
+
+# =============================================================================
+# 1. PARSER MARU (DVOR & DME)
+# =============================================================================
+def parse_maru_data(station_type, raw_text):
+    data_pool = {}
+    if "DME" in station_type:
+        raw_text = re.sub(r"(\d)\s*(LPA Temperature)", r"\1\n\2", raw_text)
+    
+    # Deteksi Active TX di awal
+    active_tx = 1
+    if re.search(r"Active\s*TX.*?TX2", raw_text, re.IGNORECASE): active_tx = 2
+    if re.search(r"Active\s*TXP.*?TXP2", raw_text, re.IGNORECASE): active_tx = 2
+    
+    # Masukkan Active TX ke pool agar terbaca saat final assembly
+    data_pool["Active TX"] = {"m1": str(active_tx), "m2": "-"}
+
     lines = raw_text.splitlines()
-    section_lines = {"Course": [], "Clearance": [], "General": []}
     current_section = "General"
+    pattern_double = re.compile(r"^(.+?)\s{2,}(.+?)\s{2,}(.+)$")
     
     for line in lines:
-        clean = line.strip()
-        if not clean: continue
-        if clean.lower().startswith("course"): current_section = "Course"
-        elif clean.lower().startswith("clearance"): current_section = "Clearance"
-        section_lines[current_section].append(clean)
-        section_lines["General"].append(clean)
-
-    targets = []
-    if tool_type == "LOCALIZER" or tool_type == "LOC":
-        targets = [
-            ("Centerline RF Level", "Centerline RF Level", "Course"),
-            ("Centerline DDM", "Centerline DDM", "Course"),
-            ("Centerline SDM", "Centerline SDM", "Course"),
-            ("Ident Mod Percent", "Ident Mod Percent", "Course"),
-            ("Width DDM", "Width DDM", "Course"),
-            ("Ident Status", "Ident Status", "Course"),
-            ("RF Level", "RF Level", "Clearance"),
-            ("Clearance 1 DDM", "Clearance 1 DDM", "Clearance"),
-            ("SDM", "SDM", "Clearance"),
-            ("Ident Mod Percent", "Ident Mod Percent", "Clearance"),
-            ("Clearance 2 DDM", "Clearance 2 DDM", "Clearance"),
-            ("Ident Status", "Ident Status", "Clearance"),
-            ("RF Freq Difference", "RF Freq Difference", "General"),
-            ("Antenna Fault", "Antenna Fault", "General")
-        ]
-    else: # GLIDEPATH
-        targets = [
-            ("Path RF Level", "Path RF Level", "Course"),
-            ("Path DDM", "Path DDM", "Course"),
-            ("Path SDM", "Path SDM", "Course"),
-            ("Width DDM", "Width DDM", "Course"),
-            ("RF Level", "RF Level", "Clearance"),
-            ("150Hz Mod Percent", "150", "Clearance"), 
-            ("RF Freq Difference", "RF Freq Difference", "General")
-        ]
-
-    for sheet_key, file_key, section in targets:
-        m1, m2 = "-", "-"
-        found_line = None
-        search_clean = file_key.lower().replace(" ", "")
+        line = line.strip()
+        if not line or line.startswith("#"): continue
+        if line.startswith("[") and line.endswith("]"):
+            current_section = line[1:-1]; continue
+        if line.startswith(";>"):
+            current_section = line.replace(";>", "").strip(); continue
+        if "Status" in line and ";" in line: 
+            match = re.search(r"([A-Za-z0-9/]+\s+Status)", line)
+            if match: current_section = match.group(1).strip(); continue
         
-        for line in section_lines.get(section, []):
-            line_clean = line.lower().replace(" ", "")
-            if line_clean.startswith(search_clean):
-                found_line = line
-                break
+        # DVOR Power Supply
+        if "DVOR" in station_type and ("Status" in current_section) and ("DC" in current_section or "Battery" in current_section):
+            matches = re.findall(r"-\s+([A-Za-z0-9\+\-\s]+?)\s+([-\d\.]+\s*V)\s+([-\d\.]+\s*A)", line)
+            if matches:
+                for label, volt, ampere in matches:
+                    clean_lbl = label.strip()
+                    data_pool[clean_lbl] = {"m1": normalize_with_unit(volt), "m2": "-"}
+                    data_pool[f"Current {clean_lbl}"] = {"m1": normalize_with_unit(ampere), "m2": "-"}
+                continue 
+        if "DVOR" in station_type and "AC" in current_section and "Status" in current_section:
+             matches = re.findall(r"-\s+(AC \+28V)\s+([-\d\.]+\s*V)\s+([-\d\.]+\s*A)", line)
+             for label, volt, ampere in matches:
+                 data_pool[label] = {"m1": normalize_with_unit(volt), "m2": "-"}
+                 data_pool[f"Current {label}"] = {"m1": normalize_with_unit(ampere), "m2": "-"}
+             continue
         
-        if found_line:
-            # LOGIKA V44: BACA DARI KANAN (AMPUH UNTUK 150 HZ)
-            parts = [p for p in re.split(r'\s{2,}', found_line.strip()) if p.strip()]
+        clean_line = line.replace("- ", "")
+        match = pattern_double.match(clean_line)
+        if match:
+            p, v1, v2 = match.group(1).strip(), match.group(2).strip(), match.group(3).strip()
+            if "DVOR" in station_type and p == "CARRIER Output Power" and current_section == "Main Status": continue
+            if "DME" in station_type and p in ["Status", "Channel", "Mode"] and current_section == "Main Status": continue
+            data_pool[p] = {"m1": normalize_with_unit(v1), "m2": normalize_with_unit(v2)}
+
+    final_rows = []
+    key_list = ORDERED_PARAMS["DME"] if "DME" in station_type else ORDERED_PARAMS["DVOR"]
+    for k in key_list:
+        if k in data_pool:
+            final_rows.append({"Parameter": k, "Monitor 1": data_pool[k]["m1"], "Monitor 2": data_pool[k]["m2"]})
+        else:
+            final_rows.append({"Parameter": k, "Monitor 1": "-", "Monitor 2": "-"})
             
-            if len(parts) >= 3:
-                last_token = parts[-1]
-                is_value_pattern = r"^[-+]?[\d\.]+$"
-                is_status_word = last_token in ["Normal", "Alarm", "Open", "Short", "_"]
-                is_number = re.match(is_value_pattern, last_token)
-                
-                raw_v1, raw_v2, unit = "-", "-", ""
+    return final_rows, active_tx
 
-                if is_number or is_status_word:
-                    raw_v2 = parts[-1]
-                    raw_v1 = parts[-2]
-                    unit = ""
-                else:
-                    if len(parts) >= 4:
-                        raw_v2 = parts[-2]
-                        raw_v1 = parts[-3]
-                        unit = last_token
-                    else:
-                        raw_v2 = parts[-2]
-                        raw_v1 = "-"
-                        unit = last_token
+# =============================================================================
+# 2. PARSER PMDT (LOC/GP/MM/OM)
+# =============================================================================
 
-                if raw_v1 in ["_", "-"] or raw_v1.isalpha(): m1 = raw_v1
-                else: m1 = f"{raw_v1} {unit}".strip()
-                
-                if raw_v2 in ["_", "-"] or raw_v2.isalpha(): m2 = raw_v2
-                else: m2 = f"{raw_v2} {unit}".strip()
-
-                if "Status" in sheet_key or "Fault" in sheet_key:
-                    m1 = raw_v1.capitalize()
-                    m2 = raw_v2.capitalize()
-
-        rows.append({"Parameter": sheet_key, "Monitor 1": m1, "Monitor 2": m2})
-
-    return rows, active_tx
-
-# =========================================================================
-# LOGIKA V40.1 Modified: Index Selection (Cocok untuk MM & OM)
-# =========================================================================
-def parse_pmdt_mm_om(raw_text):
-    active_tx = detect_active_tx("MM", raw_text)
-    mon1, mon2 = {}, {}
-    curr_mon = 0
+def parse_pmdt_strict(tool_type, full_text):
+    data_pool = {}
     
-    for line in raw_text.splitlines():
-        if "Monitor 1" in line: curr_mon = 1; continue
-        if "Monitor 2" in line: curr_mon = 2; continue
-        
-        # Cari baris yang mengandung Parameter
-        if "RF Level" in line or "Ident Modulation" in line:
-            # Ambil semua angka dalam baris
-            floats = re.findall(r"[-+]?\d*\.\d+|\d+", line)
-            
-            # FORMAT MM/OM: [AlarmLow, PreLow, DATA, PreHigh, AlarmHigh]
-            # Data ada di urutan ke-3 (Index 2)
-            if len(floats) >= 3:
-                data_val = floats[2] 
-                
-                unit = ""
-                if line.strip().endswith("dB"): unit = "dB"
-                elif line.strip().endswith("%"): unit = "%"
-                full_val = f"{data_val} {unit}".strip()
-                
-                param = "RF Level" if "RF Level" in line else "Ident Modulation"
-                if curr_mon == 1: mon1[param] = full_val
-                elif curr_mon == 2: mon2[param] = full_val
+    # 1. PARSE RMS STATUS
+    rms_params = ["Antenna Select", "Main Select", "Transmitter On"]
+    header_block = full_text.split("RAW DATA DETAILS")[0] if "RAW DATA DETAILS" in full_text else full_text
+    header_lines = header_block.splitlines()
+    for p in rms_params:
+        idx_found = -1
+        for i, line in enumerate(header_lines):
+            if p in line: idx_found = i; break
+        if idx_found != -1:
+            val1, val2 = "-", "-"
+            for j in range(1, 5):
+                if idx_found + j >= len(header_lines): break
+                subline = header_lines[idx_found + j]
+                if "Tx 1" in subline and "G" in subline.split("Tx 1")[0][-5:]: val1 = "Tx 1"
+                if "Tx 2" in subline and "G" in subline.split("Tx 2")[0][-5:]: val2 = "Tx 2"
+            data_pool[p] = {"m1": val1, "m2": val2}
 
-    rows = []
-    for req in ["RF Level", "Ident Modulation"]:
-        v1 = mon1.get(req, "-")
-        v2 = mon2.get(req, "-")
-        rows.append({"Parameter": req, "Monitor 1": v1, "Monitor 2": v2})
+    # 2. PARSE MONITOR DATA
+    section = "General"
+    lines = full_text.splitlines()
+    
+    # MM/OM Logic
+    if tool_type in ["MM", "OM"]:
+        current_mon = None
+        for line in lines:
+            line = line.strip()
+            if not line: continue
+            if "Monitor 1" in line and "Enabled" not in line and "Status" not in line: current_mon = "m1"; continue
+            elif "Monitor 2" in line and "Enabled" not in line and "Status" not in line: current_mon = "m2"; continue
+            if current_mon:
+                match = re.search(r"(RF Level|Ident Modulation)\s+([-\d\.]+)\s+([-\d\.]+)\s+([-\d\.]+)", line)
+                if match:
+                    param, val = match.group(1), match.group(4)
+                    unit = line.split()[-1]
+                    if unit in ["dB", "%"]: val = f"{val} {unit}"
+                    if param not in data_pool: data_pool[param] = {"m1": "-", "m2": "-"}
+                    data_pool[param][current_mon] = normalize_with_unit(val)
+    # LOC/GP Logic
+    else:
+        reading_monitor = True
+        for line in lines:
+            line = line.strip()
+            if "Transmitter Data" in line: reading_monitor = False
+            if not reading_monitor: break
+            if line in ["Course", "Clearance"]: section = line; continue
+            if "RMS" in line or "SNAPSHOT" in line: continue
+            parts = re.split(r"\s{2,}", line)
+            if len(parts) >= 3 and "/" not in parts[0] and "Monitor" not in line and "Select" not in line:
+                raw_p = parts[0]
+                val1, val2 = "-", "-"
+                if len(parts) == 3: val1, val2 = parts[1], parts[2]
+                elif len(parts) == 4: val1, val2 = parts[1] + " " + parts[3], parts[2] + " " + parts[3]
+                elif len(parts) == 5: val1, val2 = parts[1] + " " + parts[2], parts[3] + " " + parts[4]
+                key = raw_p
+                if section != "General": key = f"{section} - {raw_p}"
+                data_pool[key] = {"m1": normalize_with_unit(val1), "m2": normalize_with_unit(val2)}
+
+    # 3. PARSE TRANSMITTER DATA
+    if "Transmitter Data" in full_text:
+        try:
+            tx_text = full_text.split("Transmitter Data")[1]
+            tx_lines = tx_text.splitlines()
+            
+            if tool_type in ["LOC", "GP"]:
+                context_left, context_right = "Course", "Clearance"
+                for line in tx_lines:
+                    line = line.strip()
+                    if "Standby" in line: context_left, context_right = "Standby Course", "Standby Clearance"; continue
+                    if "Watts" in line or "Watt" in line:
+                        matches = re.findall(r"([A-Za-z\s]+?)\s+([-\d\.]+\s*(?:Watts|Watt|W))", line)
+                        if len(matches) >= 1:
+                            p, v = matches[0]
+                            k = p.strip() if "Antenna" in p else f"{context_left} {p.strip()}"
+                            data_pool[k] = {"m1": normalize_with_unit(v), "m2": "-"}
+                        if len(matches) >= 2:
+                            p, v = matches[1]
+                            p = p.strip()
+                            
+                            # [FIX LOC SBO]: Hanya rename jika GP & Forward Power (tanpa SBO/CSB)
+                            if tool_type == "GP" and "Forward Power" in p and "CSB" not in p and "SBO" not in p:
+                                k_right = f"{context_right} Forward Power"
+                            else:
+                                k_right = f"{context_right} {p}"
+                                
+                            data_pool[k_right] = {"m1": normalize_with_unit(v), "m2": "-"}
+
+            elif tool_type in ["MM", "OM"]:
+                current_tx = ""
+                for line in tx_lines:
+                    line = line.strip()
+                    if "Transmitter 1" in line: current_tx = "Transmitter 1"
+                    elif "Transmitter 2" in line: current_tx = "Transmitter 2"
+                    elif "Watts" in line or " : 1" in line:
+                        match = re.search(r"([A-Za-z\s]+)\s+([-\d\.]+.*)", line)
+                        if match:
+                            p_name = match.group(1).strip()
+                            val = match.group(2).replace(": 1", "").strip()
+                            key = f"{current_tx} {p_name}"
+                            data_pool[key] = {"m1": normalize_with_unit(val), "m2": "-"}
+        except: pass
+
+    final_rows = []
+    target_keys = ORDERED_PARAMS.get(tool_type, [])
+    for k in target_keys:
+        if k in data_pool:
+            final_rows.append({"Parameter": k, "Monitor 1": data_pool[k]["m1"], "Monitor 2": data_pool[k]["m2"]})
+        else:
+            found = False
+            for dp_k, dp_v in data_pool.items():
+                if k.replace(" ", "").lower() == dp_k.replace(" ", "").lower():
+                    final_rows.append({"Parameter": k, "Monitor 1": dp_v["m1"], "Monitor 2": dp_v["m2"]})
+                    found = True; break
+            if not found: final_rows.append({"Parameter": k, "Monitor 1": "-", "Monitor 2": "-"})
+
+    active_tx = 1
+    if "Transmitter On" in data_pool:
+        if data_pool["Transmitter On"]["m2"] == "Tx 2": active_tx = 2
         
-    return rows, active_tx
+    return final_rows, active_tx
+
+# --- WRAPPER ---
+def parse_pmdt_common(tool_type, text): return parse_pmdt_strict(tool_type, text)
+def parse_pmdt_loc_gp(tool_type, text):
+    tool_type = tool_type.upper()
+    if "LOCALIZER" in tool_type: tool_type = "LOC"
+    if "GLIDE" in tool_type: tool_type = "GP"
+    return parse_pmdt_strict(tool_type, text)
+def parse_pmdt_mm_om(text):
+    t_type = "MM"
+    if "Outer" in text or "OUTER" in text: t_type = "OM"
+    return parse_pmdt_strict(t_type, text)

@@ -1,6 +1,6 @@
 # FILE: bin/robot_maru.py
 # =============================================================================
-# BATIK MARU ROBOT V29 (HEADER FOCUS & AUTO CLEANUP)
+# BATIK MARU ROBOT V31 (CLEAN RAW DATA MODE)
 # =============================================================================
 
 import sys
@@ -98,12 +98,11 @@ class DatabaseManager:
     def close(self):
         if self.conn: self.conn.close()
 
-# --- FUNGSI EKSTRAKSI PDF (REVISI V29) ---
+# --- FUNGSI EKSTRAKSI PDF (TIDAK BERUBAH) ---
 
 def extract_tx_with_pypdf(pdf_path):
     try:
         reader = pypdf.PdfReader(pdf_path)
-        # HANYA AMBIL PAGE 1 (Header pasti di sini)
         if len(reader.pages) > 0:
             return reader.pages[0].extract_text()
         return ""
@@ -111,71 +110,45 @@ def extract_tx_with_pypdf(pdf_path):
         return ""
 
 def extract_tx_brute_force_zlib(pdf_path):
-    """Brute force ZLIB untuk membaca stream tersembunyi"""
     try:
         with open(pdf_path, "rb") as f:
-            content = f.read(200000) # Baca 200KB awal saja, header pasti di depan
-
+            content = f.read(200000)
         extracted_chunks = []
         zlib_headers = [b'\x78\x9c', b'\x78\x01', b'\x78\xda']
-        
         for header in zlib_headers:
             parts = content.split(header)
-            # Ambil 5 part pertama saja agar tidak terlalu dalam membaca config lain
             for part in parts[1:6]: 
                 try:
                     decompressed_data = zlib.decompress(header + part)
                     text = decompressed_data.decode('latin-1', errors='ignore')
                     extracted_chunks.append(text)
                 except: pass
-        
         return "\n".join(extracted_chunks)
     except Exception as e:
         return ""
 
 def extract_tx_from_pdf_binary(pdf_path):
-    """
-    Membaca Header PDF DVOR.
-    Logic: 'Active TX' ... 'SLO' ... 'TX(n)'
-    """
     if not os.path.exists(pdf_path): return None
-    
-    # 1. Ekstraksi Teks
-    if HAS_PYPDF:
-        raw_text = extract_tx_with_pypdf(pdf_path)
-    else:
-        raw_text = extract_tx_brute_force_zlib(pdf_path)
+    if HAS_PYPDF: raw_text = extract_tx_with_pypdf(pdf_path)
+    else: raw_text = extract_tx_brute_force_zlib(pdf_path)
 
-    # Fallback ke raw read jika kosong
     if not raw_text or len(raw_text) < 10:
         with open(pdf_path, "rb") as f:
             raw_text = f.read(50000).decode('latin-1', errors='ignore')
 
-    # 2. BERSIHKAN TEKS
     clean_text = re.sub(r'[\r\n\t\x00]', ' ', raw_text)
     clean_text = re.sub(r'\s+', ' ', clean_text)
-    
-    # 3. BATASI PENCARIAN (HEADER ONLY)
-    # Kita hanya butuh 400 karakter pertama, karena infonya ada di baris pertama
     header_text = clean_text[:400]
-
-    # --- DEBUG SEMENTARA (Tampil di Terminal, tidak disimpan ke file) ---
     print(f"   [PDF HEADER] ...{header_text}...")
 
-    # 4. CARI POLA SPESIFIK (V29)
-    # Format: Active TX [Date/Jam] SLO [TARGET]
-    # Regex: Cari "Active TX", abaikan karakter tengah, ketemu "SLO", lalu ambil "TX" dan angkanya
-    
     match = re.search(r"Active\s*TX.*?SLO\s*(TX\d)", header_text, re.IGNORECASE)
     if match:
-        tx_str = match.group(1).upper() # Hasil: "TX1" atau "TX2"
+        tx_str = match.group(1).upper()
         if "1" in tx_str: return 1
         if "2" in tx_str: return 2
 
-    # Regex Cadangan (Jika formatnya: Active TX TX1)
     if re.search(r"Active\s*TX\s*TX\s*2", header_text, re.IGNORECASE): return 2
     if re.search(r"Active\s*TX\s*TX\s*1", header_text, re.IGNORECASE): return 1
-
     return None
 
 class MaruRobot:
@@ -291,60 +264,56 @@ class MaruRobot:
 
         # 3. Process & Upload
         if raw:
-            # Hapus file temp txt setelah dicopy (Clean up)
             perm_txt = os.path.join(self.out_dir, f"{file_base}.txt")
             try: shutil.copy(temp_txt_path, perm_txt)
             except: pass
             
             self.db.save_session(self.station_name, pdf_path, raw, self.parse(raw))
-
-            # --- PREPARE DATA ---
             content_for_parser = raw
             
-            # [LOGIC DVOR: HEADER CHECK ONLY]
             if "DVOR" in self.station_name:
                 pdf_tx = extract_tx_from_pdf_binary(pdf_path)
-                
                 if pdf_tx:
                     content_for_parser += f"\n\n# [PDF_EVIDENCE] Active TX: TX{pdf_tx}"
                     broadcast_log(self.station_name, f"Header Detect: TX {pdf_tx}", "INFO")
                 else:
                     broadcast_log(self.station_name, "Header Detect: Failed", "WARN")
 
-            # --- PARSING ---
             rows_parsed, active_tx = batik_parser.parse_maru_data(self.station_name, content_for_parser)
             
             print(f"   >>> PREVIEW: TX Active = {active_tx}")
             print(f"   >>> PREVIEW: Data Rows = {len(rows_parsed)} items")
             
             if rows_parsed:
-                broadcast_log(self.station_name, "Uploading to Sheet...", "UPLOAD")
-                sid, gid, err = sheet_handler.upload_data_to_sheet(
-                    self.station_name, 
-                    rows_parsed, 
-                    datetime.now(), 
+                # ====== METODE BARU: RAW DATA UPLOAD ONLY ======
+                broadcast_log(self.station_name, "Uploading to Database...", "UPLOAD")
+                
+                status_raw, err_raw = sheet_handler.upload_raw_data(
+                    self.station_name,
+                    rows_parsed,
+                    datetime.now(),
                     active_tx
                 )
-                if err: broadcast_log(self.station_name, f"Upload Failed: {err}", "ERROR")
-                else: broadcast_log(self.station_name, f"Uploaded (Tx: {active_tx})", "SUCCESS")
+                
+                if status_raw == "Success":
+                    broadcast_log(self.station_name, "Raw Database Updated", "SUCCESS")
+                else:
+                    broadcast_log(self.station_name, f"Upload Error: {err_raw}", "ERROR")
             else:
                 broadcast_log(self.station_name, "Parsed Data EMPTY", "SKIP")
         
-        # Cleanup Temp Files (Agar folder output tidak penuh sampah)
         try:
             if os.path.exists(temp_txt_path): os.remove(temp_txt_path)
-            # Hapus file debug dump jika ada
             debug_dump = pdf_path.replace(".pdf", "_decoded.txt")
             if os.path.exists(debug_dump): os.remove(debug_dump)
         except: pass
         
         broadcast_log(self.station_name, "Job Completed", "SUCCESS")
 
-# --- ENTRY POINT ---
 if __name__ == "__main__":
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 60)
-    print(" BATIK SYSTEM | MARU ROBOT V29 (HEADER FIX)")
+    print(" BATIK SYSTEM | MARU ROBOT V31 (RAW MODE)")
     print("=" * 60)
     
     parser = argparse.ArgumentParser()
