@@ -1,6 +1,6 @@
 # FILE: dashboard.py
 # ================================================================
-# BATIK SOLO DASHBOARD V20 (PDF READER FOR DVOR TX LOGIC)
+# BATIK SOLO DASHBOARD - PERFECT FIT (WIDTH & HEIGHT)
 # ================================================================
 
 import streamlit as st
@@ -10,158 +10,213 @@ import sys
 import subprocess
 import time
 import base64
+import gspread 
 from datetime import datetime
-import sqlite3
-import re
 
 # --- CONFIG & PATHS ---
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-sys.path.append(os.path.join(BASE_DIR, "bin"))
+BIN_DIR = os.path.join(BASE_DIR, "bin")
+sys.path.append(BIN_DIR)
+
 import config 
 import sheet_handler 
 import batik_parser 
+
+# --- SETUP GSPREAD DIRECT ---
+CREDENTIALS_FILE = os.path.join(BASE_DIR, 'credentials.json')
+MASTER_SPREADSHEET_NAME = "LOGBOOK_BATIK"
+
+def get_sheet_meta(tool_code):
+    try:
+        if not os.path.exists(CREDENTIALS_FILE):
+            return None, None, "File credentials.json hilang."
+            
+        gc = gspread.service_account(filename=CREDENTIALS_FILE)
+        
+        try:
+            sh = gc.open(MASTER_SPREADSHEET_NAME)
+        except:
+            return None, None, f"File '{MASTER_SPREADSHEET_NAME}' tidak ditemukan."
+
+        target_sheet_name = f"LAST_{tool_code}"
+        try:
+            ws = sh.worksheet(target_sheet_name)
+            return sh.id, ws.id, None
+        except:
+            return None, None, f"Sheet '{target_sheet_name}' tidak ditemukan."
+
+    except Exception as e:
+        return None, None, str(e)
 
 st.set_page_config(
     page_title="BATIK SOLO",
     page_icon="📒",
     layout="wide",
-    initial_sidebar_state="expanded" 
+    initial_sidebar_state="collapsed" 
 )
 
-LAUNCHER_SCRIPT = os.path.join(BASE_DIR, "bin", "run_with_curtain.py")
-DB_PATH = config.DB_PATH
+LAUNCHER_SCRIPT = os.path.join(BIN_DIR, "run_with_curtain.py")
 
-# --- HELPER: BACA PDF SECARA BINARY (UNTUK MENCARI TX) ---
-def extract_tx_from_pdf_binary(pdf_path):
-    """
-    Membaca file PDF secara binary raw untuk mencari string 'Active TX' 
-    dan menentukan apakah TX1 atau TX2 yang muncul setelahnya.
-    """
-    try:
-        with open(pdf_path, "rb") as f:
-            content = f.read()
-            # PDF Maru biasanya menyimpan teks sebagai stream. 
-            # Kita cari byte pattern "Active TX"
-            # Pattern di PDF biasanya: (Active TX) ... (TX1)
-            
-            # 1. Cari posisi "Active TX"
-            idx = content.find(b"Active TX")
-            if idx != -1:
-                # Ambil potongan data 500 byte setelah kata Active TX
-                chunk = content[idx:idx+500]
-                
-                # Cari indikator TX1 atau TX2 di potongan tersebut
-                if b"TX2" in chunk: return 2
-                if b"TX1" in chunk: return 1
-    except:
-        pass
-    return None # Gagal baca atau tidak ketemu
-
-# --- FUNGSI EMBED GOOGLE SHEET ---
-def embed_google_sheet(sheet_id, gid):
-    url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/edit?gid={gid}&rm=minimal"
-    st.markdown(f"""
-        <div style="background-color:white; padding:5px; border-radius:10px; border:1px solid #ddd; margin-bottom: 20px;">
-            <iframe src="{url}" width="100%" height="800px" frameborder="0"></iframe>
-        </div>
-    """, unsafe_allow_html=True)
-    st.caption(f"🔗 [Klik untuk membuka di Tab Baru](https://docs.google.com/spreadsheets/d/{sheet_id}/edit?gid={gid})")
-
-# --- HELPER LAIN ---
-@st.cache_data
-def get_img_as_base64(file_path):
-    if not os.path.exists(file_path): return ""
-    with open(file_path, "rb") as f: data = f.read()
-    return base64.b64encode(data).decode()
-
-header_bg = get_img_as_base64("background_lite.jpg") or get_img_as_base64("background.png")
-logo_img = get_img_as_base64("logo.png")
-
-def get_tools():
-    tools = []
-    for cat in ["MARU", "PMDT"]:
-        p = os.path.join(config.OUTPUT_DIR, cat)
-        if os.path.exists(p): tools.extend([d for d in os.listdir(p) if os.path.isdir(os.path.join(p, d))])
-    return sorted(list(set(tools))) if tools else ["No Data"]
-
-def find_raw(tool, date):
-    dstr = date.strftime("%Y%m%d")
-    for cat in ["MARU", "PMDT"]:
-        ct = tool.replace("/", "_").replace("\\", "_")
-        p = os.path.join(config.OUTPUT_DIR, cat, ct)
-        if os.path.exists(p):
-            fs = [f for f in os.listdir(p) if f.endswith(".txt") and dstr in f]
-            if fs: return os.path.join(p, sorted(fs)[-1])
-    return None
-
-def find_evidence_pdf(tool, date):
-    """Mencari file PDF Evidence"""
-    dstr = date.strftime("%Y%m%d")
-    for cat in ["MARU", "PMDT"]:
-        ct = tool.replace("/", "_").replace("\\", "_")
-        p = os.path.join(config.OUTPUT_DIR, cat, ct)
-        if os.path.exists(p):
-            fs = [f for f in os.listdir(p) if f.endswith(".pdf") and dstr in f]
-            if fs: return os.path.join(p, sorted(fs)[-1])
-    return None
-
-def find_evidence(tool, date):
-    dstr = date.strftime("%Y%m%d")
-    res = []
-    for cat in ["MARU", "PMDT"]:
-        ct = tool.replace("/", "_").replace("\\", "_")
-        p = os.path.join(config.OUTPUT_DIR, cat, ct)
-        if os.path.exists(p):
-            candidates = [os.path.join(p, f) for f in os.listdir(p) if dstr in f and f.endswith(('.png','.jpg','.pdf'))]
-            res.extend(candidates)
-    if res: res.sort(key=os.path.getmtime, reverse=True)
-    return res
-
-def load_live_db():
-    try:
-        if not os.path.exists(DB_PATH): return pd.DataFrame()
-        c = sqlite3.connect(DB_PATH)
-        c.execute("PRAGMA journal_mode=WAL;")
-        df = pd.read_sql_query("SELECT station_name as station, MAX(timestamp) as timestamp FROM sessions GROUP BY station_name", c)
-        c.close()
-        if not df.empty: df['timestamp'] = pd.to_datetime(df['timestamp'])
-        return df
-    except: return pd.DataFrame()
-
-def run_robot(script, args):
-    subprocess.Popen([sys.executable, LAUNCHER_SCRIPT, os.path.join(BASE_DIR, script)] + args)
-    st.toast("🚀 Robot Start...", icon="⏳"); time.sleep(2); st.rerun()
-
-# --- MAIN UI ---
-st.markdown(f"""
+# --- CSS STYLING ---
+st.markdown("""
     <style>
-        header[data-testid="stHeader"] {{ z-index: 1; }}
-        footer {{visibility: hidden;}}
-        .block-container {{ padding-top: 2rem; }}
-        .visual-header {{
-            background-image: url("data:image/jpg;base64,{header_bg}");
+        .tool-card-container {
+            background-color: #f8f9fa;
+            border-radius: 12px;
+            border-left: 6px solid #FFD700;
+            padding: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .tool-title {
+            color: #2c3e50; font-size: 1.5rem; font-weight: 700;
+            margin-bottom: 0px; 
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        
+        /* Iframe Style - FIXED PIXEL WIDTH */
+        .sheet-frame {
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            overflow: hidden;
+            background: white;
+            margin-top: 15px;
+            /* Width diatur inline via Python */
+        }
+        
+        header[data-testid="stHeader"] { z-index: 1; }
+        footer {visibility: hidden;}
+        .block-container { padding-top: 2rem; }
+        .visual-header {
             background-repeat: repeat-x; background-size: auto 100%;
             background-position: center top; height: 280px; width: 100%;
             display: flex; flex-direction: row; justify-content: center;
             align-items: center; gap: 30px;
             box-shadow: inset 0 0 0 2000px rgba(10, 10, 15, 0.85); 
             margin-bottom: 30px; border-bottom: 6px solid #FFD700;
-        }}
-        .header-logo {{ height: 180px; width: auto; object-fit: contain; }}
-        .text-container {{ display: flex; flex-direction: column; text-align: left; }}
-        .batik-title-text {{ font-size: 2.8rem; color: #FFFFFF; font-weight: 700; margin: 0; }}
-        .airnav-sub {{ font-family: 'Times New Roman', serif; font-size: 2.2rem; color: #FFD700; margin-top: 5px; }}
-        section[data-testid="stSidebar"] {{ background-color: #1a1a1a; border-right: 1px solid #333; }}
-        .stButton button {{ background-color: #007bff; color: white; }}
+        }
+        .header-logo { height: 180px; width: auto; object-fit: contain; }
+        .text-container { display: flex; flex-direction: column; text-align: left; }
+        .batik-title-text { font-size: 2.8rem; color: #FFFFFF; font-weight: 700; margin: 0; }
+        .airnav-sub { font-family: 'Times New Roman', serif; font-size: 2.2rem; color: #FFD700; margin-top: 5px; }
+        section[data-testid="stSidebar"] { display: none; }
+        .stButton button { width: 100%; border-radius: 6px; font-weight: 600; background-color: #007bff; color: white;}
     </style>
 """, unsafe_allow_html=True)
 
-with st.sidebar:
-    st.image("logo.png", use_container_width=True)
-    menu = st.radio("Menu", ["Meter Reading", "Data Meter Reading"], label_visibility="collapsed")
+# --- HELPER FUNCTIONS ---
+@st.cache_data
+def get_img_as_base64(file_path):
+    if not os.path.exists(file_path): return ""
+    with open(file_path, "rb") as f: data = f.read()
+    return base64.b64encode(data).decode()
+
+def find_evidence_file(tool_code, date, extension_list):
+    dstr = date.strftime("%Y%m%d")
+    folder_mapping = {
+        "LOC": "LOCALIZER", "GP": "GLIDE PATH", 
+        "MM": "MIDDLE MARKER", "OM": "OUTER MARKER",
+        "DVOR": "DVOR", "DME": "DME"
+    }
+    folder_name = folder_mapping.get(tool_code, tool_code)
+    category = "PMDT" if tool_code in ["LOC", "GP", "MM", "OM"] else "MARU"
+    possible_paths = [
+        os.path.join(config.OUTPUT_DIR, category, folder_name, "Transmitter_Data"),
+        os.path.join(config.OUTPUT_DIR, category, folder_name),
+        os.path.join(config.OUTPUT_DIR, category, tool_code)
+    ]
+    candidates = []
+    for p in possible_paths:
+        if os.path.exists(p):
+            found = [os.path.join(p, f) for f in os.listdir(p) 
+                     if dstr in f and f.lower().endswith(extension_list)]
+            candidates.extend(found)
+    if candidates: 
+        candidates.sort(key=os.path.getmtime, reverse=True)
+        return candidates[0]
+    return None
+
+def run_robot(script, args):
+    subprocess.Popen([sys.executable, LAUNCHER_SCRIPT, os.path.join(BASE_DIR, script)] + args)
+    st.toast("🚀 Robot Start...", icon="⏳"); time.sleep(2); st.rerun()
+
+# --- COMPONENT: RENDER TOOL CARD ---
+def render_tool_card(tool_name, tool_code, script, args, is_ils=True):
+    ssid, gid, err_msg = get_sheet_meta(tool_code)
+
+    evidence_file = None
+    if not is_ils: 
+        evidence_file = find_evidence_file(tool_name, datetime.now(), ('.pdf'))
+    else:
+        evidence_file = find_evidence_file(tool_code, datetime.now(), ('.png', '.jpg', '.jpeg'))
+
+    st.markdown('<div class="tool-card-container">', unsafe_allow_html=True)
+    
+    c_title, c_btn = st.columns([3, 1])
+    with c_title:
+        st.markdown(f'<div class="tool-title">{tool_name}</div>', unsafe_allow_html=True)
+    with c_btn:
+        if st.button(f"▶ RUN", key=f"run_{tool_code}"):
+            run_robot(script, args)
+
+    st.markdown("---")
+
+    # GOOGLE SHEET EMBED (FIXED WIDTH & HEIGHT)
+    if ssid and gid:
+        # KONFIGURASI HEIGHT (Tinggi) & WIDTH (Lebar)
+        # Lebar 700px biasanya pas untuk 6 Kolom (A-F)
+        # Jika masih kepotong kanan, naikkan width jadi 720 atau 750
+        range_config = {
+            "LOC":  {"row": "23", "height": "630", "width": "760"},
+            "GP":   {"row": "17", "height": "460", "width": "760"},
+            "MM":   {"row": "10", "height": "270", "width": "760"},
+            "OM":   {"row": "10", "height": "270", "width": "760"},
+            "DVOR": {"row": "20", "height": "540", "width": "760"},
+            "DME":  {"row": "18", "height": "490", "width": "760"}
+        }
+        
+        conf = range_config.get(tool_code, {"row": "25", "height": "600", "width": "100%"})
+        
+        target_range = f"A1:F{conf['row']}"
+        frame_height = f"{conf['height']}px"
+        frame_width = f"{conf['width']}px" if conf['width'] != "100%" else "100%"
+
+        sheet_url = f"https://docs.google.com/spreadsheets/d/{ssid}/htmlembed?gid={gid}&widget=false&chrome=false&single=true&headers=false&range={target_range}"
+        
+        # Perhatikan atribut 'width' pada iframe sekarang mengambil dari config
+        st.markdown(f"""
+            <div class="sheet-frame" style="width: {frame_width};">
+                <iframe src="{sheet_url}" width="100%" height="{frame_height}" frameborder="0" scrolling="no"></iframe>
+            </div>
+            <div style="text-align:right; font-size:0.8rem; margin-top:5px; width: {frame_width};">
+                <a href="https://docs.google.com/spreadsheets/d/{ssid}/edit?gid={gid}" target="_blank" style="color:#999; text-decoration:none;">🔗 Edit Data</a>
+            </div>
+        """, unsafe_allow_html=True)
+    else:
+        if err_msg: st.warning(f"⚠️ {err_msg}")
+        else: st.info("Loading Sheet...")
+
+    with st.expander("📸 Lihat Evidence", expanded=False):
+        if evidence_file:
+            st.caption(f"File: {os.path.basename(evidence_file)}")
+            if is_ils: 
+                st.image(evidence_file, use_container_width=True)
+            else:
+                with open(evidence_file, "rb") as f:
+                    base64_pdf = base64.b64encode(f.read()).decode('utf-8')
+                pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="600" type="application/pdf"></iframe>'
+                st.markdown(pdf_display, unsafe_allow_html=True)
+        else:
+            st.info("Belum ada evidence.")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+# --- HEADER SECTION ---
+header_bg = get_img_as_base64("background_lite.jpg") or get_img_as_base64("background.png")
+logo_img = get_img_as_base64("logo.png")
 
 st.markdown(f"""
-    <div class="visual-header">
+    <div class="visual-header" style="background-image: url('data:image/jpg;base64,{header_bg}');">
         <img src="data:image/png;base64,{logo_img}" class="header-logo">
         <div class="text-container">
             <div class="batik-title-text">Buku Catatan Elektronik</div>
@@ -170,115 +225,21 @@ st.markdown(f"""
     </div>
 """, unsafe_allow_html=True)
 
-if menu == "Meter Reading":
-    df_live = load_live_db()
-    st.subheader("ILS (PMDT)")
-    c1, c2, c3, c4 = st.columns(4)
-    for i, (name, code) in enumerate([("Localizer", "LOC"), ("Glidepath", "GP"), ("Middle Marker", "MM"), ("Outer Marker", "OM")]):
-        ts, status = "-", "🔴 BELUM UPDATE"
-        if not df_live.empty:
-            row = df_live[df_live['station'].str.contains(code, case=False)]
-            if not row.empty:
-                t = row.iloc[0]['timestamp']
-                ts = t.strftime("%H:%M")
-                if t.date() == datetime.now().date(): status = "🟢 UPDATED"
-        with [c1, c2, c3, c4][i]:
-            st.metric(name, status, f"Last: {ts}")
-            if st.button(f"Read {name}", use_container_width=True): run_robot("bin/robot_pmdt.py", ["--target", code])
+# --- MAIN LAYOUT ---
+st.markdown("### 📡 INSTRUMENT LANDING SYSTEM (ILS)")
+c1, c2 = st.columns(2)
+with c1:
+    render_tool_card("Localizer", "LOC", "bin/robot_pmdt.py", ["--target", "LOC"], is_ils=True)
+    render_tool_card("Middle Marker", "MM", "bin/robot_pmdt.py", ["--target", "MM"], is_ils=True)
+with c2:
+    render_tool_card("Glidepath", "GP", "bin/robot_pmdt.py", ["--target", "GP"], is_ils=True)
+    render_tool_card("Outer Marker", "OM", "bin/robot_pmdt.py", ["--target", "OM"], is_ils=True)
 
-    st.markdown("---")
-    st.subheader("DVOR/DME (MARU)")
-    c1, c2 = st.columns(2)
-    for i, (name, arg) in enumerate([("DVOR", "--DVOR"), ("DME", "--DME")]):
-        ts, status = "-", "🔴 BELUM UPDATE"
-        if not df_live.empty:
-            row = df_live[df_live['station'].str.contains(name, case=False)]
-            if not row.empty:
-                t = row.iloc[0]['timestamp']
-                ts = t.strftime("%H:%M")
-                if t.date() == datetime.now().date(): status = "🟢 UPDATED"
-        with [c1, c2][i]:
-            st.metric(name, status, f"Last: {ts}")
-            if st.button(f"Read {name}", use_container_width=True): run_robot("bin/robot_maru.py", [arg])
+st.markdown("### 📡 NAVIGASI UDARA (DVOR & DME)")
+c3, c4 = st.columns(2)
+with c3: render_tool_card("DVOR", "DVOR", "bin/robot_maru.py", ["--DVOR"], is_ils=False)
+with c4: render_tool_card("DME", "DME", "bin/robot_maru.py", ["--DME"], is_ils=False)
 
-    st.markdown("---")
-    if st.button("RUN ALL METER READING", use_container_width=True): run_robot("bin/run_all.py", [])
-
-elif menu == "Data Meter Reading":
-    st.markdown("### 📂 Digital Logbook Viewer")
-    c1, c2, c3 = st.columns(3)
-    with c1: s_date = st.date_input("Pilih Bulan", datetime.today())
-    with c2: s_tool = st.selectbox("Peralatan", get_tools())
-    with c3: 
-        st.write("")
-        force_sync = st.button("🔄 Force Re-Sync Data", use_container_width=True)
-    
-    st.markdown("---")
-    
-    # 1. LOGIKA SYNC MANUAL
-    if force_sync and s_tool != "No Data":
-        raw_file = find_raw(s_tool, s_date)
-        if raw_file:
-            with st.spinner("Membaca Raw Data & Upload Manual..."):
-                content = ""
-                try: 
-                    with open(raw_file, "r", encoding="utf-8", errors="replace") as f: content = f.read()
-                except:
-                    with open(raw_file, "r", encoding="latin-1", errors="replace") as f: content = f.read()
-                
-                # === [LOGIKA KHUSUS DVOR: BACA PDF] ===
-                if "DVOR" in s_tool.upper():
-                    pdf_file = find_evidence_pdf(s_tool, s_date)
-                    if pdf_file:
-                        pdf_tx = extract_tx_from_pdf_binary(pdf_file)
-                        if pdf_tx:
-                            # Injeksi Marker ke Content agar dibaca Parser
-                            content += f"\n\n# [PDF_EVIDENCE] Active TX: TX{pdf_tx}"
-                            st.toast(f"DVOR: Terdeteksi TX {pdf_tx} Active (via PDF)", icon="📡")
-                # ======================================
-
-                # Proses Parsing
-                tool_up = s_tool.upper()
-                rows_data = []
-                active_tx = 1
-                
-                if "LOC" in tool_up or "GLIDE" in tool_up or "GP" in tool_up:
-                    t_type = "LOCALIZER" if "LOC" in tool_up else "GLIDEPATH"
-                    rows_data, active_tx = batik_parser.parse_pmdt_loc_gp(t_type, content)
-                elif "MARKER" in tool_up or "MM" in tool_up or "OM" in tool_up:
-                    rows_data, active_tx = batik_parser.parse_pmdt_mm_om(content)
-                else:
-                    rows_data, active_tx = batik_parser.parse_maru_data(s_tool, content)
-                
-                # Upload
-                if rows_data:
-                    sid, gid, err = sheet_handler.upload_data_to_sheet(s_tool, rows_data, s_date, active_tx)
-                    if err: st.error(f"Upload Gagal: {err}")
-                    else: st.success("Data berhasil disinkronkan manual!")
-                else:
-                    st.warning("Tidak ada data valid ditemukan di file raw.")
-        else:
-            st.error("File Raw tidak ditemukan.")
-
-    # 2. VIEWER GOOGLE SHEET
-    if s_tool != "No Data":
-        try:
-            sh, err = sheet_handler.connect_gsheet()
-            if not err:
-                ws, err_ws = sheet_handler.get_or_create_monthly_sheet(sh, s_tool, s_date)
-                if ws:
-                    sheet_handler.update_period_label(ws, s_date)
-                    embed_google_sheet(sh.id, ws.id)
-                else: st.info("Sheet belum dibuat (Data kosong).")
-            else: st.error("Gagal koneksi ke Google Sheet.")
-        except Exception as e: st.error(f"Viewer Error: {e}")
-
-        st.markdown("#### 📸 Bukti Evidence (Lokal)")
-        evs = find_evidence(s_tool, s_date)
-        if evs:
-            for e in evs:
-                if e.endswith(".pdf"):
-                    with open(e,"rb") as f: b64 = base64.b64encode(f.read()).decode()
-                    st.markdown(f'<iframe src="data:application/pdf;base64,{b64}" width="100%" height="600"></iframe>', unsafe_allow_html=True)
-                else: st.image(e)
-        else: st.info("Evidence belum tersedia.")
+st.markdown("---")
+if st.button("🚀 RUN ALL METER READING", use_container_width=True):
+    run_robot("bin/run_all.py", [])

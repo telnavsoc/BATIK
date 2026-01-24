@@ -1,97 +1,12 @@
-13:55:31 | SYSTEM           | Eksekusi Robot: run_all.py
-13:55:32 | SYSTEM          | Starting PMDT...                         | INIT
-13:55:32 | SYSTEM          | Already Logged In                        | OK
-13:55:33 | LOCALIZER       | Scanning target...                       | SEARCH
-13:55:39 | LOCALIZER       | Connected: 111.50                        | SUCCESS
-13:55:39 | LOCALIZER       | Stabilizing UI (3s)...                   | WAIT
-13:55:42 | RMS             | Fetching Status (Robust Mode)...         | CMD
-13:55:50 | LOCALIZER       | Getting Monitor Data...                  | CMD
-13:55:52 | LOCALIZER       | Stabilizing (10s)                        | WAIT
-13:56:03 | LOCALIZER       | Getting Transmitter Data...              | CMD
-13:56:05 | LOCALIZER       | Stabilizing (5s)                         | WAIT
-13:56:11 | LOCALIZER       | Database Saved (WAL)                     | DONE
-13:56:11 | LOCALIZER       | TX Status: ON AIR (UNKNOWN TX) (14.7 W)  | INFO
-13:56:11 | LOCALIZER       | Database Saved (WAL)                     | DONE
-13:56:11 | LOCALIZER       | Backing up to Raw Database...            | UPLOAD
-13:56:14 | LOCALIZER       | Raw DB Updated (29 items)                | SUCCESS
-13:56:14 | SYSTEM          | Disconnecting...                         | CMD
-13:56:16 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-13:56:23 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-13:56:23 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-13:56:26 | LOCALIZER       | CYCLE COMPLETED                          | FINISH
-13:56:29 | SYSTEM          | Starting PMDT...                         | INIT
-13:56:30 | SYSTEM          | Already Logged In                        | OK
-13:56:31 | GLIDE PATH      | Scanning target...                       | SEARCH
-13:56:36 | GLIDE PATH      | Connected: 332.9                         | SUCCESS
-13:56:36 | GLIDE PATH      | Stabilizing UI (3s)...                   | WAIT
-13:56:39 | RMS             | Fetching Status (Robust Mode)...         | CMD
-13:56:48 | GLIDE PATH      | Getting Monitor Data...                  | CMD
-13:56:50 | GLIDE PATH      | Stabilizing (10s)                        | WAIT
-13:57:01 | GLIDE PATH      | Getting Transmitter Data...              | CMD
-13:57:02 | GLIDE PATH      | Stabilizing (5s)                         | WAIT
-13:57:09 | GLIDE PATH      | Database Saved (WAL)                     | DONE
-13:57:09 | GLIDE PATH      | TX Status: ON AIR (UNKNOWN TX) (2.51 W)  | INFO
-13:57:09 | GLIDE PATH      | Database Saved (WAL)                     | DONE
-13:57:09 | GLIDE PATH      | Backing up to Raw Database...            | UPLOAD
-13:57:11 | GLIDE PATH      | Raw DB Updated (23 items)                | SUCCESS
-13:57:11 | SYSTEM          | Disconnecting...                         | CMD
-13:57:13 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-13:57:27 | SYSTEM          | Starting PMDT...                         | INIT
-13:57:27 | SYSTEM          | Already Logged In                        | OK
-13:57:28 | MIDDLE MARKER   | Scanning target...                       | SEARCH
-13:57:34 | MIDDLE MARKER   | Connected: MIDDLE MARKER                 | SUCCESS
-13:57:34 | MIDDLE MARKER   | Stabilizing UI (3s)...                   | WAIT
-13:57:37 | RMS             | Fetching Status (Robust Mode)...         | CMD
-13:57:45 | MIDDLE MARKER   | Getting Monitor Data...                  | CMD
-13:57:47 | MIDDLE MARKER   | Stabilizing (10s)                        | WAIT
-13:57:58 | MIDDLE MARKER   | Getting Transmitter Data...              | CMD
-13:58:00 | MIDDLE MARKER   | Stabilizing (5s)                         | WAIT
-13:58:06 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
-13:58:06 | MIDDLE MARKER   | TX Status: OFF / DUMMY (0.68 W)          | INFO
-13:58:06 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
-13:58:06 | MIDDLE MARKER   | Backing up to Raw Database...            | UPLOAD
-13:58:09 | MIDDLE MARKER   | Raw DB Updated (11 items)                | SUCCESS
-13:58:09 | SYSTEM          | Disconnecting...                         | CMD
-13:58:11 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-13:58:13 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-13:58:13 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-13:58:16 | MIDDLE MARKER   | CYCLE COMPLETED                          | FINISH
-13:58:19 | SYSTEM          | Starting PMDT...                         | INIT
-13:58:20 | SYSTEM          | Already Logged In                        | OK
-13:58:21 | OUTER MARKER    | Scanning target...                       | SEARCH
-13:58:26 | OUTER MARKER    | Connected: OUTER MARKER                  | SUCCESS
-13:58:26 | OUTER MARKER    | Stabilizing UI (3s)...                   | WAIT
-13:58:29 | RMS             | Fetching Status (Robust Mode)...         | CMD
-13:58:38 | OUTER MARKER    | Getting Monitor Data...                  | CMD
-13:58:40 | OUTER MARKER    | Stabilizing (10s)                        | WAIT
-13:58:51 | OUTER MARKER    | Getting Transmitter Data...              | CMD
-13:58:52 | OUTER MARKER    | Stabilizing (5s)                         | WAIT
-13:58:59 | OUTER MARKER    | Database Saved (WAL)                     | DONE
-13:58:59 | OUTER MARKER    | TX Status: ON AIR (UNKNOWN TX) (2.35 W)  | INFO
-13:58:59 | OUTER MARKER    | Database Saved (WAL)                     | DONE
-13:58:59 | OUTER MARKER    | Backing up to Raw Database...            | UPLOAD
-13:59:02 | OUTER MARKER    | Raw DB Updated (11 items)                | SUCCESS
-13:59:02 | SYSTEM          | Disconnecting...                         | CMD
-13:59:03 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-13:59:05 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-13:59:05 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-13:59:08 | OUTER MARKER    | CYCLE COMPLETED                          | FINISH
-13:59:12 | DVOR            | Finding Window...                        | SEARCH
-13:59:14 | DVOR            | Saving Log (TXT)                         | PROCESS
-13:59:21 | DVOR            | Printing Evidence (PDF)                  | PROCESS
-13:59:35 | DVOR            | Finalizing PDF (5s)...                   | WAIT
-13:59:40 | DVOR            | Database Saved (WAL)                     | DONE
-13:59:40 | DVOR            | Header Detect: TX 1                      | INFO
-13:59:40 | DVOR            | Uploading to Database...                 | UPLOAD
-13:59:43 | DVOR            | Raw Database Updated                     | SUCCESS
-13:59:43 | DVOR            | Job Completed                            | SUCCESS
-13:59:46 | DME             | Finding Window...                        | SEARCH
-13:59:49 | DME             | Saving Log (TXT)                         | PROCESS
-13:59:56 | DME             | Printing Evidence (PDF)                  | PROCESS
-14:00:10 | DME             | Finalizing PDF (5s)...                   | WAIT
-14:00:15 | DME             | Database Saved (WAL)                     | DONE
-14:00:15 | DME             | Uploading to Database...                 | UPLOAD
-14:00:18 | DME             | Raw Database Updated                     | SUCCESS
-14:00:18 | DME             | Job Completed                            | SUCCESS
-14:00:21 | SYSTEM           | Tugas Robot Selesai.
-14:00:21 | SYSTEM           | Menutup Curtain...
+18:49:42 | SYSTEM           | Eksekusi Robot: robot_maru.py
+18:49:43 | DVOR            | Finding Window...                        | SEARCH
+18:49:45 | DVOR            | Saving Log (TXT)                         | PROCESS
+18:49:52 | DVOR            | Printing Evidence (PDF)                  | PROCESS
+18:50:06 | DVOR            | Finalizing PDF (5s)...                   | WAIT
+18:50:11 | DVOR            | Database Saved (WAL)                     | DONE
+18:50:11 | DVOR            | Header Detect: TX 2                      | INFO
+18:50:11 | DVOR            | Uploading to Database...                 | UPLOAD
+18:50:14 | DVOR            | Raw Database Updated                     | SUCCESS
+18:50:14 | DVOR            | Job Completed                            | SUCCESS
+18:50:14 | SYSTEM           | Tugas Robot Selesai.
+18:50:14 | SYSTEM           | Menutup Curtain...

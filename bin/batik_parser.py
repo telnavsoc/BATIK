@@ -17,7 +17,7 @@ def normalize_with_unit(val):
     val = re.sub(r"\s*(Amps|Amp|A)\b", " A", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(degs|deg)\b", " deg", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(%)\b", " %", val, flags=re.IGNORECASE)
-    val = re.sub(r"\s*(Hz)\b", " Hz", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(Hz)\b", "Hz", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(MHz)\b", " MHz", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(DDM)\b", " DDM", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(dB)\b", " dB", val, flags=re.IGNORECASE)
