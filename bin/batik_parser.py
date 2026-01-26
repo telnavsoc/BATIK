@@ -1,6 +1,6 @@
 # FILE: bin/batik_parser.py
 # =============================================================================
-# BATIK PARSER V19.0 (LOC SBO FIX & ACTIVE TX HEADER)
+# BATIK PARSER V20.1 (ROBUST SECTION DETECTION)
 # =============================================================================
 import re
 
@@ -9,9 +9,11 @@ def normalize_with_unit(val):
     if not val or val.strip() in ["-", "", "_"]: return "-"
     val = val.strip()
     
+    # Jika hanya huruf (seperti NORMAL, Enabled), biarkan
     if re.match(r"^[A-Za-z\s/]+$", val) and not any(c.isdigit() for c in val):
         return val
 
+    # Tambahkan spasi sebelum satuan
     val = re.sub(r"\s*(Watts|Watt|W)\b", " W", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(Volts|Volt|V)\b", " V", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(Amps|Amp|A)\b", " A", val, flags=re.IGNORECASE)
@@ -21,15 +23,17 @@ def normalize_with_unit(val):
     val = re.sub(r"\s*(MHz)\b", " MHz", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(DDM)\b", " DDM", val, flags=re.IGNORECASE)
     val = re.sub(r"\s*(dB)\b", " dB", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(usec)\b", " usec", val, flags=re.IGNORECASE)
+    val = re.sub(r"\s*(pp/s)\b", " pp/s", val, flags=re.IGNORECASE)
 
     return re.sub(r"\s+", " ", val).strip()
 
 # =============================================================================
-# DEFINISI URUTAN PARAMETER (Active TX Added for DVOR/DME)
+# DEFINISI URUTAN PARAMETER
 # =============================================================================
 ORDERED_PARAMS = {
     "DVOR": [
-        "Active TX", # NEW HEADER
+        "Active TX", 
         "Status", "IDENT Code", "CARRIER Frequency", "USB Frequency", "LSB Frequency",
         "CARRIER Output Power", "RF Input Level", "Azimuth", "9960Hz FM Index",
         "30Hz AM Modulation Depth", "9960Hz AM Modulation Depth", "1020Hz AM Modulation Depth",
@@ -40,7 +44,7 @@ ORDERED_PARAMS = {
         "AC +28V", "Current AC +28V", "Battery +24V", "Current Battery +24V"
     ],
     "DME": [
-        "Active TX", # NEW HEADER
+        "Active TX",
         "IDENT Code", "Output Power", "Frequency", "System Delay", "Reply Pulse Spacing",
         "Reply Efficiency", "Reply Pulse Rate", "Reply Pulse Rise Time", "Reply Pulse Decay Time",
         "Reply Pulse Duration", "HPA Temperature", "LPA Temperature",
@@ -86,37 +90,60 @@ ORDERED_PARAMS = {
 }
 
 # =============================================================================
-# 1. PARSER MARU (DVOR & DME)
+# 1. PARSER MARU (DVOR & DME) - REVISED & ROBUST
 # =============================================================================
 def parse_maru_data(station_type, raw_text):
     data_pool = {}
+    
+    # Pre-processing untuk memperbaiki format LPA Temperature yang sering menempel
     if "DME" in station_type:
         raw_text = re.sub(r"(\d)\s*(LPA Temperature)", r"\1\n\2", raw_text)
     
-    # Deteksi Active TX di awal
+    # Deteksi Active TX (Sederhana)
     active_tx = 1
     if re.search(r"Active\s*TX.*?TX2", raw_text, re.IGNORECASE): active_tx = 2
     if re.search(r"Active\s*TXP.*?TXP2", raw_text, re.IGNORECASE): active_tx = 2
     
-    # Masukkan Active TX ke pool agar terbaca saat final assembly
     data_pool["Active TX"] = {"m1": str(active_tx), "m2": "-"}
 
     lines = raw_text.splitlines()
     current_section = "General"
     pattern_double = re.compile(r"^(.+?)\s{2,}(.+?)\s{2,}(.+)$")
     
+    # [DAFTAR WAJIB] Parameter ini HANYA boleh diambil jika section mengandung kata "MON Major Measurement"
+    # Ini mencegah data 'Output Power' tertimpa oleh nilai dari section lain (misal Configuration)
+    strict_mon_params = [
+        "IDENT Code", "Output Power", "Frequency", "System Delay",
+        "Reply Pulse Spacing", "Reply Efficiency", "Reply Pulse Rate",
+        "Reply Pulse Rise Time", "Reply Pulse Decay Time", "Reply Pulse Duration"
+    ]
+    
     for line in lines:
         line = line.strip()
         if not line or line.startswith("#"): continue
+        
+        # [FIX 1] Deteksi Section Header yang lebih ROBUST
+        # Kita anggap semua baris yang diawali ";" adalah section header.
+        # Kita buang tanda ";" dan karakter panah (jika ada, atau jika error encoding)
+        if line.startswith(";"):
+            # Ambil teks setelah tanda ;
+            raw_sec = line.lstrip(";").strip()
+            # Bersihkan karakter non-huruf di awal (misal sisa panah yang jadi kotak/tanda tanya)
+            # Kita cukup ambil raw_sec, tapi untuk pastikan section match, kita pakai string matching
+            current_section = raw_sec
+            continue
+
+        # Deteksi Section Utama [Nama Section]
         if line.startswith("[") and line.endswith("]"):
-            current_section = line[1:-1]; continue
-        if line.startswith(";>"):
-            current_section = line.replace(";>", "").strip(); continue
-        if "Status" in line and ";" in line: 
+            current_section = line[1:-1]
+            continue
+            
+        # Fallback untuk format lama (Status lines)
+        if "Status" in line and ";" in line and not line.startswith(";"): 
             match = re.search(r"([A-Za-z0-9/]+\s+Status)", line)
             if match: current_section = match.group(1).strip(); continue
         
-        # DVOR Power Supply
+        # Parsing Data Nilai (DVOR Power Supply)
         if "DVOR" in station_type and ("Status" in current_section) and ("DC" in current_section or "Battery" in current_section):
             matches = re.findall(r"-\s+([A-Za-z0-9\+\-\s]+?)\s+([-\d\.]+\s*V)\s+([-\d\.]+\s*A)", line)
             if matches:
@@ -132,14 +159,25 @@ def parse_maru_data(station_type, raw_text):
                  data_pool[f"Current {label}"] = {"m1": normalize_with_unit(ampere), "m2": "-"}
              continue
         
+        # Parsing Data Nilai (Umum: Parameter Value1 Value2)
         clean_line = line.replace("- ", "")
         match = pattern_double.match(clean_line)
         if match:
             p, v1, v2 = match.group(1).strip(), match.group(2).strip(), match.group(3).strip()
+            
+            # [LOGIKA STRICT FILTER]
+            if "DME" in station_type and p in strict_mon_params:
+                # Cek apakah kita BENAR-BENAR ada di section MON Major Measurement
+                # Kita gunakan 'in' agar tidak peduli karakter aneh di kiri/kanan nama section
+                if "MON Major Measurement" not in current_section:
+                    continue # Skip data ini karena bukan dari section yang diminta
+
+            # Filter DVOR
             if "DVOR" in station_type and p == "CARRIER Output Power" and current_section == "Main Status": continue
-            if "DME" in station_type and p in ["Status", "Channel", "Mode"] and current_section == "Main Status": continue
+            
             data_pool[p] = {"m1": normalize_with_unit(v1), "m2": normalize_with_unit(v2)}
 
+    # Susun Hasil Akhir Sesuai Urutan
     final_rows = []
     key_list = ORDERED_PARAMS["DME"] if "DME" in station_type else ORDERED_PARAMS["DVOR"]
     for k in key_list:
@@ -151,9 +189,8 @@ def parse_maru_data(station_type, raw_text):
     return final_rows, active_tx
 
 # =============================================================================
-# 2. PARSER PMDT (LOC/GP/MM/OM)
+# 2. PARSER PMDT (LOC/GP/MM/OM) - TETAP SAMA
 # =============================================================================
-
 def parse_pmdt_strict(tool_type, full_text):
     data_pool = {}
     
@@ -178,7 +215,6 @@ def parse_pmdt_strict(tool_type, full_text):
     section = "General"
     lines = full_text.splitlines()
     
-    # MM/OM Logic
     if tool_type in ["MM", "OM"]:
         current_mon = None
         for line in lines:
@@ -194,7 +230,6 @@ def parse_pmdt_strict(tool_type, full_text):
                     if unit in ["dB", "%"]: val = f"{val} {unit}"
                     if param not in data_pool: data_pool[param] = {"m1": "-", "m2": "-"}
                     data_pool[param][current_mon] = normalize_with_unit(val)
-    # LOC/GP Logic
     else:
         reading_monitor = True
         for line in lines:
@@ -234,13 +269,10 @@ def parse_pmdt_strict(tool_type, full_text):
                         if len(matches) >= 2:
                             p, v = matches[1]
                             p = p.strip()
-                            
-                            # [FIX LOC SBO]: Hanya rename jika GP & Forward Power (tanpa SBO/CSB)
                             if tool_type == "GP" and "Forward Power" in p and "CSB" not in p and "SBO" not in p:
                                 k_right = f"{context_right} Forward Power"
                             else:
                                 k_right = f"{context_right} {p}"
-                                
                             data_pool[k_right] = {"m1": normalize_with_unit(v), "m2": "-"}
 
             elif tool_type in ["MM", "OM"]:

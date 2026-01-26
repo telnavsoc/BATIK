@@ -1,101 +1,11 @@
-06:54:24 | SYSTEM           | Eksekusi Robot: run_all.py
-06:54:24 | SYSTEM          | Starting PMDT...                         | INIT
-06:54:31 | SYSTEM          | Logging in...                            | PROCESS
-06:54:42 | SYSTEM          | Login Successful                         | OK
-06:54:43 | LOCALIZER       | Scanning target...                       | SEARCH
-06:54:49 | LOCALIZER       | Connected: 111.50                        | SUCCESS
-06:54:49 | LOCALIZER       | Stabilizing UI (3s)...                   | WAIT
-06:54:52 | RMS             | Fetching Status (Robust Mode)...         | CMD
-06:55:01 | LOCALIZER       | Getting Monitor Data...                  | CMD
-06:55:03 | LOCALIZER       | Stabilizing (10s)                        | WAIT
-06:55:14 | LOCALIZER       | Getting Transmitter Data...              | CMD
-06:55:15 | LOCALIZER       | Stabilizing (5s)                         | WAIT
-06:55:22 | LOCALIZER       | Database Saved (WAL)                     | DONE
-06:55:22 | LOCALIZER       | TX Status: ON AIR (UNKNOWN TX) (14.7 W)  | INFO
-06:55:22 | LOCALIZER       | Database Saved (WAL)                     | DONE
-06:55:22 | LOCALIZER       | Backing up to Raw Database...            | UPLOAD
-06:55:24 | LOCALIZER       | Raw DB Updated (29 items)                | SUCCESS
-06:55:24 | SYSTEM          | Disconnecting...                         | CMD
-06:55:26 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-06:55:33 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-06:55:33 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-06:55:36 | LOCALIZER       | CYCLE COMPLETED                          | FINISH
-06:55:40 | SYSTEM          | Starting PMDT...                         | INIT
-06:55:40 | SYSTEM          | Already Logged In                        | OK
-06:55:41 | GLIDE PATH      | Scanning target...                       | SEARCH
-06:55:47 | GLIDE PATH      | Connected: 332.9                         | SUCCESS
-06:55:47 | GLIDE PATH      | Stabilizing UI (3s)...                   | WAIT
-06:55:50 | RMS             | Fetching Status (Robust Mode)...         | CMD
-06:55:58 | GLIDE PATH      | Getting Monitor Data...                  | CMD
-06:56:00 | GLIDE PATH      | Stabilizing (10s)                        | WAIT
-06:56:11 | GLIDE PATH      | Getting Transmitter Data...              | CMD
-06:56:13 | GLIDE PATH      | Stabilizing (5s)                         | WAIT
-06:56:19 | GLIDE PATH      | Database Saved (WAL)                     | DONE
-06:56:19 | GLIDE PATH      | TX Status: OFF / DUMMY (0.00 W)          | INFO
-06:56:19 | GLIDE PATH      | Database Saved (WAL)                     | DONE
-06:56:19 | GLIDE PATH      | Backing up to Raw Database...            | UPLOAD
-06:56:22 | GLIDE PATH      | Raw DB Updated (23 items)                | SUCCESS
-06:56:22 | SYSTEM          | Disconnecting...                         | CMD
-06:56:24 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-06:56:32 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-06:56:32 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-06:56:35 | GLIDE PATH      | CYCLE COMPLETED                          | FINISH
-06:56:39 | SYSTEM          | Starting PMDT...                         | INIT
-06:56:39 | SYSTEM          | Already Logged In                        | OK
-06:56:40 | MIDDLE MARKER   | Scanning target...                       | SEARCH
-06:56:45 | MIDDLE MARKER   | Connected: MIDDLE MARKER                 | SUCCESS
-06:56:45 | MIDDLE MARKER   | Stabilizing UI (3s)...                   | WAIT
-06:56:48 | RMS             | Fetching Status (Robust Mode)...         | CMD
-06:56:57 | MIDDLE MARKER   | Getting Monitor Data...                  | CMD
-06:56:59 | MIDDLE MARKER   | Stabilizing (10s)                        | WAIT
-06:57:10 | MIDDLE MARKER   | Getting Transmitter Data...              | CMD
-06:57:12 | MIDDLE MARKER   | Stabilizing (5s)                         | WAIT
-06:57:18 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
-06:57:18 | MIDDLE MARKER   | TX Status: OFF / DUMMY (0.68 W)          | INFO
-06:57:18 | MIDDLE MARKER   | Database Saved (WAL)                     | DONE
-06:57:18 | MIDDLE MARKER   | Backing up to Raw Database...            | UPLOAD
-06:57:21 | MIDDLE MARKER   | Raw DB Updated (11 items)                | SUCCESS
-06:57:21 | SYSTEM          | Disconnecting...                         | CMD
-06:57:22 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-06:57:24 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-06:57:24 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-06:57:27 | MIDDLE MARKER   | CYCLE COMPLETED                          | FINISH
-06:57:31 | SYSTEM          | Starting PMDT...                         | INIT
-06:57:31 | SYSTEM          | Already Logged In                        | OK
-06:57:32 | OUTER MARKER    | Scanning target...                       | SEARCH
-06:57:38 | OUTER MARKER    | Connected: OUTER MARKER                  | SUCCESS
-06:57:38 | OUTER MARKER    | Stabilizing UI (3s)...                   | WAIT
-06:57:41 | RMS             | Fetching Status (Robust Mode)...         | CMD
-06:57:49 | OUTER MARKER    | Getting Monitor Data...                  | CMD
-06:57:51 | OUTER MARKER    | Stabilizing (10s)                        | WAIT
-06:58:02 | OUTER MARKER    | Getting Transmitter Data...              | CMD
-06:58:04 | OUTER MARKER    | Stabilizing (5s)                         | WAIT
-06:58:10 | OUTER MARKER    | Database Saved (WAL)                     | DONE
-06:58:10 | OUTER MARKER    | TX Status: ON AIR (UNKNOWN TX) (2.35 W)  | INFO
-06:58:10 | OUTER MARKER    | Database Saved (WAL)                     | DONE
-06:58:10 | OUTER MARKER    | Backing up to Raw Database...            | UPLOAD
-06:58:13 | OUTER MARKER    | Raw DB Updated (11 items)                | SUCCESS
-06:58:13 | SYSTEM          | Disconnecting...                         | CMD
-06:58:15 | SYSTEM          | Waiting for PC REMOTE...                 | WAIT
-06:58:17 | SYSTEM          | State Confirmed: PC REMOTE               | OK
-06:58:17 | SYSTEM          | Safety Delay (3s)...                     | WAIT
-06:58:20 | OUTER MARKER    | CYCLE COMPLETED                          | FINISH
-06:58:23 | DVOR            | Finding Window...                        | SEARCH
-06:58:26 | DVOR            | Saving Log (TXT)                         | PROCESS
-06:58:32 | DVOR            | Printing Evidence (PDF)                  | PROCESS
-06:58:47 | DVOR            | Finalizing PDF (5s)...                   | WAIT
-06:58:52 | DVOR            | Database Saved (WAL)                     | DONE
-06:58:52 | DVOR            | Header Detect: TX 2                      | INFO
-06:58:52 | DVOR            | Uploading to Database...                 | UPLOAD
-06:58:54 | DVOR            | Raw Database Updated                     | SUCCESS
-06:58:54 | DVOR            | Job Completed                            | SUCCESS
-06:58:58 | DME             | Finding Window...                        | SEARCH
-06:59:00 | DME             | Saving Log (TXT)                         | PROCESS
-06:59:07 | DME             | Printing Evidence (PDF)                  | PROCESS
-06:59:22 | DME             | Finalizing PDF (5s)...                   | WAIT
-06:59:27 | DME             | Database Saved (WAL)                     | DONE
-06:59:27 | DME             | Uploading to Database...                 | UPLOAD
-06:59:30 | DME             | Raw Database Updated                     | SUCCESS
-06:59:30 | DME             | Job Completed                            | SUCCESS
-06:59:33 | SYSTEM           | Tugas Robot Selesai.
-06:59:33 | SYSTEM           | Menutup Curtain...
+11:47:15 | SYSTEM           | Eksekusi Robot: robot_maru.py
+11:47:16 | DME             | Finding Window...                        | SEARCH
+11:47:18 | DME             | Saving Log (TXT)                         | PROCESS
+11:47:25 | DME             | Printing Evidence (PDF)                  | PROCESS
+11:47:40 | DME             | Finalizing PDF (5s)...                   | WAIT
+11:47:45 | DME             | Database Saved (WAL)                     | DONE
+11:47:45 | DME             | Uploading to Database...                 | UPLOAD
+11:47:47 | DME             | Raw Database Updated                     | SUCCESS
+11:47:47 | DME             | Job Completed                            | SUCCESS
+11:47:47 | SYSTEM           | Tugas Robot Selesai.
+11:47:47 | SYSTEM           | Menutup Curtain...
