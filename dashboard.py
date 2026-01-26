@@ -2,6 +2,7 @@
 # ================================================================
 # BATIK SOLO DASHBOARD - SMART CACHE VERSIONING
 # FITUR: INDIVIDUAL REFRESH, CUSTOM PAPER SIZE, CLEAN UI
+# UPDATE: CUSTOM ICON B.png
 # ================================================================
 
 import streamlit as st
@@ -14,6 +15,7 @@ import base64
 import gspread 
 import requests 
 from datetime import datetime
+from PIL import Image  # LIBRARY TAMBAHAN UNTUK ICON
 
 from google.oauth2.service_account import Credentials
 import google.auth.transport.requests
@@ -36,8 +38,26 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive'
 ]
 
+# --- LOAD CUSTOM ICON ---
+# Logika untuk memuat ikon B.png
+ICON_PATH = r"D:\eman\BATIK\B.png"
+page_icon_img = "📒" # Default fallback jika gambar tidak ditemukan
+
+try:
+    if os.path.exists(ICON_PATH):
+        page_icon_img = Image.open(ICON_PATH)
+except Exception as e:
+    print(f"Warning: Gagal memuat ikon kustom. Menggunakan default. Error: {e}")
+
+# --- PAGE CONFIG (DIPINDAHKAN KE ATAS AGAR TERBACA DI AWAL) ---
+st.set_page_config(
+    page_title="BATIK SOLO",
+    page_icon=page_icon_img, # MENGGUNAKAN ICON B.PNG
+    layout="wide",
+    initial_sidebar_state="collapsed" 
+)
+
 # --- STATE MANAGEMENT (UNTUK REFRESH PER ALAT) ---
-# Kita simpan versi cache untuk masing-masing alat
 if "cache_versions" not in st.session_state:
     st.session_state.cache_versions = {
         "LOC": 0, "GP": 0, "MM": 0, "OM": 0, "DVOR": 0, "DME": 0
@@ -65,8 +85,6 @@ def set_sheet_visibility(sh, sheet_id, visible=True):
         pass
 
 # --- FUNGSI PDF FETCH (SMART REFRESH) ---
-# Kita tambahkan argumen 'cache_ver'. Meskipun tidak dipakai di logika,
-# perubahan nilai argumen ini akan memaksa Streamlit mengabaikan cache lama.
 @st.cache_data(ttl=300, show_spinner="Membaca Data Parameter...") 
 def get_hidden_sheet_as_pdf(tool_code, cache_ver):
     try:
@@ -106,13 +124,6 @@ def get_hidden_sheet_as_pdf(tool_code, cache_ver):
         return base64.b64encode(res.content).decode('utf-8'), None
     except Exception as e:
         return None, f"System Error: {str(e)}"
-
-st.set_page_config(
-    page_title="BATIK SOLO",
-    page_icon="📒",
-    layout="wide",
-    initial_sidebar_state="collapsed" 
-)
 
 LAUNCHER_SCRIPT = os.path.join(BIN_DIR, "run_with_curtain.py")
 
@@ -193,8 +204,6 @@ def find_evidence_file(tool_code, date, extension_list):
 
 # --- FUNGSI UPDATE VERSI CACHE (INCREMENT) ---
 def trigger_refresh(tool_code):
-    # Naikkan versi cache untuk alat ini saja
-    # Ini akan memaksa fungsi get_hidden_sheet_as_pdf download ulang hanya untuk alat ini
     st.session_state.cache_versions[tool_code] += 1
 
 def run_robot(script, args, tool_code):
@@ -205,10 +214,7 @@ def run_robot(script, args, tool_code):
         )
     if process.returncode == 0:
         st.toast(f"✅ Data {tool_code} Terupdate!", icon="🔄")
-        
-        # UPDATE CACHE KHUSUS ALAT INI (Biar langsung fresh)
         trigger_refresh(tool_code)
-        
         time.sleep(1)
         st.rerun()
     else:
@@ -240,7 +246,6 @@ def render_tool_card(tool_name, tool_code, script, args, is_ils=True):
     SPACER = (VIRTUAL_W - HEADER_W) / 2
     
     # --- FETCH DATA DENGAN VERSI CACHE UNIK ---
-    # Kita ambil versi saat ini dari session state
     current_version = st.session_state.cache_versions[tool_code]
     pdf_b64, err_msg = get_hidden_sheet_as_pdf(tool_code, current_version)
 
@@ -256,15 +261,12 @@ def render_tool_card(tool_name, tool_code, script, args, is_ils=True):
         with c_Center:
             st.markdown(f'<div class="tool-title">{tool_name}</div>', unsafe_allow_html=True)
             
-            # TOMBOL RUN & REFRESH BERDAMPINGAN
-            # Kita bagi kolom kecil: [Tombol Run] [Tombol Refresh]
             b_cols = st.columns([4, 1]) 
-            
-            with b_cols[0]: # Tombol RUN (Besar)
+            with b_cols[0]: # Tombol RUN
                 if st.button(f"RUN {tool_code}", key=f"run_{tool_code}", use_container_width=True):
-                    run_robot(script, args, tool_code) # Pass tool_code untuk auto-refresh
+                    run_robot(script, args, tool_code) 
             
-            with b_cols[1]: # Tombol REFRESH (Kecil)
+            with b_cols[1]: # Tombol REFRESH
                 if st.button("🔄", key=f"refresh_{tool_code}", help="Refresh data alat ini saja"):
                     trigger_refresh(tool_code)
                     st.rerun()
@@ -318,11 +320,7 @@ st.markdown(f"""
 with st.container():
     c_run_all = st.columns([1, 2, 1]) 
     with c_run_all[1]:
-        # Tombol ini tidak me-refresh cache spesifik (kecuali ditambah logika tambahan)
-        # Saat ini hanya menjalankan robot back-to-back
         if st.button("🚀 RUN ALL METER READING", use_container_width=True): 
-             # Untuk Run All, kita pakai script run_all.py
-             # Jika ingin auto-refresh semua setelah run all, bisa ditambahkan trigger_refresh loop
              run_robot("bin/run_all.py", [], "ALL") 
     
     st.write("")
