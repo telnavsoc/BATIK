@@ -1,6 +1,6 @@
 # FILE: bin/robot_maru.py
 # =============================================================================
-# BATIK MARU ROBOT V31 (CLEAN RAW DATA MODE)
+# BATIK MARU ROBOT V32 (FOCUS FIX & ROBUST TXT SAVE)
 # =============================================================================
 
 import sys
@@ -157,12 +157,13 @@ class MaruRobot:
         self.db = DatabaseManager()
         self.hwnd = 0
         
+        # TARGET WINDOW TITLE YANG LEBIH SPESIFIK
         if "220" in self.mode:
-            self.target_key = "220"
+            self.target_key = "MARU 220" # Updated from "220"
             self.station_name = "DVOR"
             self.temp_txt = "DVOR_temp.txt"
         else:
-            self.target_key = "320"
+            self.target_key = "MARU 310" # Updated from "320" to match "MARU 310/320"
             self.station_name = "DME"
             self.temp_txt = "DME_temp.txt"
 
@@ -173,40 +174,72 @@ class MaruRobot:
         target = 0
         def cb(h, p):
             nonlocal target
-            if win32gui.IsWindowVisible(h) and self.target_key in win32gui.GetWindowText(h): target = h
+            # Pencarian substring case-insensitive
+            if win32gui.IsWindowVisible(h) and self.target_key.upper() in win32gui.GetWindowText(h).upper(): 
+                target = h
         win32gui.EnumWindows(cb, None)
         return target
 
     def focus_and_click_main(self):
-        if not self.hwnd: return False
+        # FUNGSI FOKUS YANG DIPERBAIKI (SAMA SEPERTI PMDT)
+        if not self.hwnd: 
+            # Coba cari ulang jika hwnd hilang/invalid
+            self.hwnd = self.find_window()
+            if not self.hwnd: return False
+
         try:
-            if win32gui.IsIconic(self.hwnd): win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
-            win32gui.SetForegroundWindow(self.hwnd)
+            if win32gui.IsIconic(self.hwnd): 
+                win32gui.ShowWindow(self.hwnd, win32con.SW_RESTORE)
+            
+            # --- TRIK ALT UNTUK MEMAKSA FOKUS ---
+            try:
+                win32gui.SetForegroundWindow(self.hwnd)
+            except:
+                # Jika akses ditolak, tekan ALT lalu coba lagi (Trik ampuh Windows)
+                pyautogui.press("alt")
+                try:
+                    win32gui.SetForegroundWindow(self.hwnd)
+                except:
+                    pass # Keep going, click might fix it
+            
             time.sleep(0.5)
+            
+            # Update rect setelah restore/focus
             rect = win32gui.GetWindowRect(self.hwnd)
+            
+            # Klik Pancingan (Header)
             pyautogui.click(rect[0] + 50, rect[1] + 10)
             time.sleep(0.2)
+            
+            # Klik Tombol 'Main' (Asumsi posisi tombol Main)
             pyautogui.click(rect[0] + 60, rect[1] + 80)
             time.sleep(0.5)
+            
             return True
-        except: return False
+        except Exception as e:
+            broadcast_log(self.station_name, f"Focus Error: {e}", "WARN")
+            return False
 
     def save_dialog(self, full_path, is_txt):
-        pyautogui.hotkey("alt", "n")
-        time.sleep(0.3)
+        # Dialog Save As Windows Standar
+        pyautogui.hotkey("alt", "n") # Fokus ke kolom File Name
+        time.sleep(0.5)
         pyperclip.copy(full_path)
         pyautogui.hotkey("ctrl", "v")
-        time.sleep(0.3)
-        pyautogui.hotkey("alt", "s")
-        time.sleep(0.8)
+        time.sleep(0.5)
+        pyautogui.hotkey("alt", "s") # Tombol Save
+        time.sleep(1.0)
+        
         if is_txt:
-            pyautogui.hotkey("alt", "y")
-            time.sleep(0.3)
+            # Handle Confirm Overwrite jika file sudah ada
+            pyautogui.hotkey("alt", "y") 
+            time.sleep(0.5)
         else:
             time.sleep(3.0)
 
     def read_file(self, f):
         try: 
+            if not os.path.exists(f): return ""
             with open(f, "r") as x: return x.read()
         except: return ""
 
@@ -222,38 +255,73 @@ class MaruRobot:
         broadcast_log(self.station_name, "Finding Window...", "SEARCH")
         self.hwnd = self.find_window()
         if not self.hwnd:
-            broadcast_log(self.station_name, "Window Not Found", "MISSING")
+            broadcast_log(self.station_name, f"Window '{self.target_key}' Not Found", "MISSING")
             return
 
         # 1. Save TXT
-        self.focus_and_click_main()
+        # PENTING: Fokus harus berhasil di sini agar Ctrl+P masuk ke aplikasi
+        if not self.focus_and_click_main():
+            broadcast_log(self.station_name, "Failed to Focus App", "ERROR")
+            # Coba lanjut saja, siapa tahu sudah aktif
+        
         broadcast_log(self.station_name, "Saving Log (TXT)", "PROCESS")
         
+        # Kirim command Print (Ctrl+P)
+        pyautogui.hotkey("ctrl", "p")
+        time.sleep(1.5) # Beri waktu dialog muncul
+        
+        # Navigasi di Dialog Print milik MARU
         if "220" in self.mode:
-            pyautogui.hotkey("ctrl", "p"); time.sleep(1.0)
-            pyautogui.hotkey("alt", "s"); time.sleep(1.0)
+            # MARU 220: Langsung Alt+S untuk Save TXT (berdasarkan script lama)
+            pyautogui.hotkey("alt", "s")
+            time.sleep(1.0)
         else:
-            pyautogui.hotkey("ctrl", "p"); time.sleep(1.0)
-            pyautogui.hotkey("alt", "a"); pyautogui.hotkey("alt", "s"); time.sleep(1.0)
+            # MARU 310/320: Alt+A (All Pages) -> Alt+S (Save)
+            pyautogui.hotkey("alt", "a")
+            time.sleep(0.5)
+            pyautogui.hotkey("alt", "s")
+            time.sleep(1.0)
 
+        # Proses Simpan File TXT
         temp_txt_path = os.path.join(config.TEMP_DIR, self.temp_txt)
+        # Hapus file lama jika ada agar tidak bingung
+        if os.path.exists(temp_txt_path):
+            os.remove(temp_txt_path)
+            
         self.save_dialog(temp_txt_path, True)
+        
+        # Validasi apakah file terbentuk
+        if not os.path.exists(temp_txt_path):
+            broadcast_log(self.station_name, "Gagal Mengambil Data TXT (File Not Created)", "ERROR")
+            # Jangan return, coba lanjut ke PDF siapa tahu berhasil
+        else:
+            broadcast_log(self.station_name, "TXT File Created", "OK")
+
         raw = self.read_file(temp_txt_path)
 
         # 2. Print PDF
         broadcast_log(self.station_name, "Printing Evidence (PDF)", "PROCESS")
-        pyautogui.press("esc"); time.sleep(0.5)
-        self.focus_and_click_main()
-        pyautogui.hotkey("ctrl", "p"); time.sleep(1.0)
+        pyautogui.press("esc") # Tutup dialog sebelumnya jika nyangkut
+        time.sleep(0.5)
+        
+        self.focus_and_click_main() # Fokus ulang
+        pyautogui.hotkey("ctrl", "p")
+        time.sleep(1.5)
         
         if "220" in self.mode:
-            pyautogui.hotkey("alt", "p"); time.sleep(0.3)
-            pyautogui.press(["f4", "m", "enter"]); time.sleep(0.3)
-            pyautogui.press("enter"); time.sleep(1.5)
+            pyautogui.hotkey("alt", "p") # Printer Select
+            time.sleep(0.5)
+            pyautogui.press(["f4", "m", "enter"]) # Pilih MS Print to PDF
+            time.sleep(0.5)
+            pyautogui.press("enter") # Klik Print
+            time.sleep(1.5)
         else:
-            pyautogui.press(["f4", "m", "enter"]); time.sleep(0.5)
-            pyautogui.hotkey("alt", "a"); time.sleep(0.3)
-            pyautogui.hotkey("alt", "o"); time.sleep(1.5)
+            pyautogui.press(["f4", "m", "enter"]) # Pilih MS Print to PDF
+            time.sleep(0.5)
+            pyautogui.hotkey("alt", "a")
+            time.sleep(0.3)
+            pyautogui.hotkey("alt", "o") # OK / Print
+            time.sleep(1.5)
         
         file_base = f"{self.station_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
         pdf_path = os.path.join(self.out_dir, f"{file_base}.pdf")
@@ -301,6 +369,8 @@ class MaruRobot:
                     broadcast_log(self.station_name, f"Upload Error: {err_raw}", "ERROR")
             else:
                 broadcast_log(self.station_name, "Parsed Data EMPTY", "SKIP")
+        else:
+            broadcast_log(self.station_name, "RAW DATA EMPTY - Skipping Upload", "WARN")
         
         try:
             if os.path.exists(temp_txt_path): os.remove(temp_txt_path)
@@ -313,7 +383,7 @@ class MaruRobot:
 if __name__ == "__main__":
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 60)
-    print(" BATIK SYSTEM | MARU ROBOT V31 (RAW MODE)")
+    print(" BATIK SYSTEM | MARU ROBOT V32 (RAW MODE)")
     print("=" * 60)
     
     parser = argparse.ArgumentParser()

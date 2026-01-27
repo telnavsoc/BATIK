@@ -1,6 +1,6 @@
 # FILE: bin/robot_pmdt.py
 # =============================================================================
-# BATIK PMDT ROBOT V18.1 (FULL DATA MERGE REVISION)
+# BATIK PMDT ROBOT V18.3 (V18.1 RESTORED + AUTO CLOSE)
 # =============================================================================
 
 import sys
@@ -44,7 +44,7 @@ STATUS_FILE = os.path.join(BASE_DIR, "current_status.txt")
 pyautogui.FAILSAFE = True
 pyautogui.PAUSE = 0.5
 
-# PMDT Window Target
+# PMDT Window Target (SESUAI REQUEST)
 PMDT_X, PMDT_Y, PMDT_W, PMDT_H = 2379, -1052, 1024, 768
 
 # [UPDATED] Keyword Localizer diubah ke 111.50
@@ -177,6 +177,8 @@ class HybridBatikRobot:
         with open(config.COORD_FILE, "r") as f: return json.load(f)
 
     def force_anchor_window(self):
+        # [KEMBALI KE LOGIKA V18.1] Mencari "PMDT" atau "Selex"
+        # Ini akan MENHINDARI jendela RCSU (Model 2238)
         self.hwnd = 0
         def cb(h, _):
             title = win32gui.GetWindowText(h)
@@ -454,8 +456,8 @@ class HybridBatikRobot:
                 info["fwd"] = str(max_power)
         except: pass
 
-        tx1_active = "G  Tx 1" in status_text
-        tx2_active = "G  Tx 2" in status_text
+        tx1_active = "G  Tx 1" in status_text
+        tx2_active = "G  Tx 2" in status_text
         try: current_power = float(info["fwd"])
         except: current_power = 0.0
         
@@ -468,16 +470,34 @@ class HybridBatikRobot:
              info["status"] = "OFF / DUMMY"
         return info
 
+    # --- FUNGSI BARU: AUTO CLOSE ---
+    def close_application(self):
+        """Menutup aplikasi PMDT dengan aman."""
+        broadcast_log("SYSTEM", "Closing PMDT Application...", "STOP")
+        # Pastikan jendela aktif dan di posisi benar
+        if self.force_anchor_window():
+            time.sleep(0.5)
+            # Alt+F4 adalah cara standar menutup aplikasi di Windows
+            pyautogui.hotkey("alt", "f4")
+            time.sleep(1.0)
+            # Jika ada dialog konfirmasi "Are you sure?", tekan Enter
+            pyautogui.press("enter")
+            broadcast_log("SYSTEM", "PMDT Closed Successfully", "OFF")
+        else:
+            broadcast_log("SYSTEM", "Failed to focus PMDT for closing", "ERROR")
+
 # --- ENTRY POINT ---
 if __name__ == "__main__":
     import argparse
     os.system('cls' if os.name == 'nt' else 'clear')
     print("=" * 60)
-    print(" BATIK SYSTEM | PMDT ROBOT V18.1 (FULL MERGE)")
+    print(" BATIK SYSTEM | PMDT ROBOT V18.3 (FULL MERGE + AUTO CLOSE)")
     print("=" * 60)
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--target", required=True, help="LOC, GP, MM, OM")
+    # ARGUMEN BARU: Flag untuk membiarkan aplikasi tetap terbuka
+    parser.add_argument("--keep-open", action="store_true", help="Keep App Open")
     args = parser.parse_args()
 
     target_key = args.target.upper()
@@ -494,8 +514,18 @@ if __name__ == "__main__":
         time.sleep(1)
         if bot.connect_tool(station_name, image_file, expected_keyword):
             bot.collect_data_sequence(station_name)
+            
+            # Disconnect Tool (Balik ke menu utama)
             if bot.disconnect_tool():
                 broadcast_log(station_name, "CYCLE COMPLETED", "FINISH")
+                
+                # --- LOGIKA AUTO CLOSE ---
+                # Jika flag --keep-open TIDAK diberikan, tutup aplikasi
+                if not args.keep_open:
+                    bot.close_application()
+                else:
+                    broadcast_log("SYSTEM", "App kept open (Sequence Mode)", "INFO")
+                    
             else: sys.exit(3)
         else: sys.exit(2)
     except KeyboardInterrupt: broadcast_log("SYSTEM", "User Stopped", "STOP")
