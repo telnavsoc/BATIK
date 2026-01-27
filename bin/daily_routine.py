@@ -1,3 +1,4 @@
+# FILE: bin/daily_routine.py
 import os
 import time
 import subprocess
@@ -21,6 +22,13 @@ ROBOT_TARGET_SCRIPT = os.path.join(BIN_DIR, "run_all.py")
 DASHBOARD_SCRIPT = os.path.join(BASE_DIR, "dashboard.py")
 DASHBOARD_URL = "http://localhost:8501" 
 LOG_FILE = os.path.join(BASE_DIR, "routine_debug.log")
+
+# --- CHROME APP SETTINGS ---
+CHROME_APP_CMD = [
+    r"C:\Program Files\Google\Chrome\Application\chrome_proxy.exe", 
+    "--profile-directory=Default", 
+    "--app-id=fkkhajlpfoflidlepdpofgkmlcgcobng"
+]
 
 CREATE_NO_WINDOW = 0x08000000
 
@@ -104,27 +112,45 @@ def open_dashboard_silent():
             )
             time.sleep(5)
             
-        log("Opening Chrome...")
-        os.system(f"start chrome {DASHBOARD_URL}")
+        log("Opening Chrome App...")
+        # [REVISI] Buka sebagai Chrome App menggunakan Popen
+        try:
+            subprocess.Popen(CHROME_APP_CMD)
+        except Exception as e:
+            log(f"Failed opening App Mode: {e}, falling back to default.")
+            os.system(f"start chrome {DASHBOARD_URL}")
+            
         time.sleep(5)
     except Exception as e:
         log(f"Dashboard Launch Error: {e}")
 
 def snap_chrome_right():
-    log("Snapping Chrome Window...")
-    # ... (logika snap window tetap sama)
+    log("Snapping Dashboard Window...")
+    # ... (logika snap window tetap sama, tapi target window disesuaikan)
     try:
-        chrome_windows = [w for w in gw.getWindowsWithTitle('Chrome') if w.title != '']
-        if not chrome_windows: chrome_windows = [w for w in gw.getWindowsWithTitle('Google Chrome')]
-        if chrome_windows:
-            win = chrome_windows[0]
+        # [REVISI] Cari window dengan judul 'BATIK' (App Mode) atau fallback ke 'Chrome'
+        target_titles = ['BATIK', 'BATIK SOLO', 'Chrome', 'Google Chrome']
+        target_win = None
+        
+        for t in target_titles:
+            wins = [w for w in gw.getWindowsWithTitle(t) if w.title != '']
+            if wins:
+                target_win = wins[0]
+                break
+        
+        if target_win:
+            win = target_win
             if win.isMinimized: win.restore()
             win.activate()
             screen_w, screen_h = pyautogui.size()
             win.moveTo(int(screen_w / 2), 0)
             win.resizeTo(int(screen_w / 2), screen_h)
-            log("Snap Success.")
-    except: pass
+            log(f"Snap Success: {win.title}")
+        else:
+            log("Window Dashboard tidak ditemukan untuk di-snap.")
+            
+    except Exception as e:
+        log(f"Snap Error: {e}")
 
 def main():
     log("=== ROUTINE STARTED (MANUAL/TASK) ===")

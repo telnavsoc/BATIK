@@ -1,3 +1,4 @@
+# FILE: bin/batik_tray.py
 import pystray
 from pystray import MenuItem as item
 from PIL import Image, ImageDraw
@@ -16,6 +17,13 @@ DASHBOARD_SCRIPT = os.path.join(BASE_DIR, "dashboard.py")
 CURTAIN_SCRIPT = os.path.join(BASE_DIR, "bin", "run_with_curtain.py")
 ROBOT_TARGET_SCRIPT = os.path.join(BASE_DIR, "bin", "run_all.py")
 DASHBOARD_URL = "http://localhost:8501"
+
+# --- CHROME APP SETTINGS ---
+CHROME_APP_CMD = [
+    r"C:\Program Files\Google\Chrome\Application\chrome_proxy.exe", 
+    "--profile-directory=Default", 
+    "--app-id=fkkhajlpfoflidlepdpofgkmlcgcobng"
+]
 
 # Flag Windows untuk menyembunyikan window
 CREATE_NO_WINDOW = 0x08000000
@@ -70,7 +78,14 @@ def open_dashboard_smart(icon, item):
             cwd=BASE_DIR
         )
         time.sleep(3)
-    os.system(f"start chrome {DASHBOARD_URL}")
+    
+    # [REVISI] Buka sebagai Chrome App (Window Mode)
+    try:
+        subprocess.Popen(CHROME_APP_CMD)
+    except Exception as e:
+        # Fallback jika gagal command app, buka browser biasa
+        icon.notify(f"Gagal mode App, membuka browser biasa.", "Info")
+        os.system(f"start chrome {DASHBOARD_URL}")
 
 def restart_watchdog(icon, item):
     script = os.path.join(BASE_DIR, "bin", "service_watchdog.py")

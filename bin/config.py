@@ -38,6 +38,14 @@ IP_MARU_310 = "192.168.56.45"
 PATH_MARU_220 = r"D:\APP peralatan\MOPHIENS\MARU 220\MARU 220.exe"
 IP_MARU_220 = "192.168.56.41"
 
+# --- CHROME APP SETTINGS (NEW) ---
+# Command untuk membuka Dashboard sebagai Aplikasi Windows (Tanpa Address Bar)
+CHROME_APP_CMD = [
+    r"C:\Program Files\Google\Chrome\Application\chrome_proxy.exe", 
+    "--profile-directory=Default", 
+    "--app-id=fkkhajlpfoflidlepdpofgkmlcgcobng"
+]
+
 # --- PMDT SETTINGS ---
 PMDT_ANCHOR = (2379, -1052, 1024, 768)
 
