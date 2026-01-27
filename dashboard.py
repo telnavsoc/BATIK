@@ -1,7 +1,7 @@
 # FILE: dashboard.py
 # ================================================================
 # BATIK SOLO DASHBOARD - FINAL PRODUCTION
-# FITUR: LOGIKA BOX SUDAH BETUL + HEADER FULL + TINGGI BOX RATA
+# FITUR: SMART CACHE (HANYA RELOAD JIKA DATA BERUBAH), STABLE UI
 # ================================================================
 
 import streamlit as st
@@ -40,8 +40,15 @@ SCOPES = [
     'https://www.googleapis.com/auth/drive'
 ]
 
-# --- LOAD CUSTOM ICON ---
+# --- LOAD ASSETS ---
 ICON_PATH = r"D:\eman\BATIK\B.png"
+REFRESH_ICON_PATH = r"D:\eman\BATIK\refresh.png"
+ILS_ICON_PATH = r"D:\eman\BATIK\ils_icon.png"
+DVOR_ICON_PATH = r"D:\eman\BATIK\dvor_icon.png"
+BG_LITE_PATH = "background_lite.jpg"
+BG_PNG_PATH = "background.png"
+LOGO_PATH = "logo.png"
+
 page_icon_img = "📒"
 try:
     if os.path.exists(ICON_PATH):
@@ -49,11 +56,35 @@ try:
 except Exception as e:
     pass
 
+# --- HELPER: SMART IMAGE CACHING ---
+@st.cache_data
+def get_img_as_base64(file_path, _mtime=None):
+    if not os.path.exists(file_path): return ""
+    with open(file_path, "rb") as f: data = f.read()
+    return base64.b64encode(data).decode()
+
+def load_smart_img(path):
+    if os.path.exists(path):
+        return get_img_as_base64(path, os.path.getmtime(path))
+    return ""
+
+# Load Assets
+refresh_icon_b64 = load_smart_img(REFRESH_ICON_PATH)
+ils_icon_b64 = load_smart_img(ILS_ICON_PATH)
+dvor_icon_b64 = load_smart_img(DVOR_ICON_PATH)
+logo_b64 = load_smart_img(LOGO_PATH)
+
+header_bg_b64 = ""
+if os.path.exists(BG_LITE_PATH):
+    header_bg_b64 = load_smart_img(BG_LITE_PATH)
+elif os.path.exists(BG_PNG_PATH):
+    header_bg_b64 = load_smart_img(BG_PNG_PATH)
+
 # --- PAGE CONFIG ---
 st.set_page_config(
     page_title="BATIK SOLO",
     page_icon=page_icon_img,
-    layout="wide", # Layout Wide Wajib
+    layout="wide",
     initial_sidebar_state="collapsed" 
 )
 
@@ -84,9 +115,27 @@ def set_sheet_visibility(sh, sheet_id, visible=True):
     except:
         pass
 
-# --- FUNGSI PDF FETCH ---
-@st.cache_data(ttl=300) 
-def get_hidden_sheet_as_pdf(tool_code, cache_ver):
+# --- SMART DATA CACHE LOGIC ---
+
+# 1. Fungsi Ringan: Cek Kapan Terakhir Spreadsheet Diedit
+# Fungsi ini berjalan cepat setiap kali refresh browser.
+# Jika timestamp tidak berubah, maka fungsi PDF yang berat TIDAK AKAN dijalankan.
+@st.cache_data(ttl=60) # Cek metadata ke Google setiap 60 detik (sangat ringan)
+def get_last_data_update():
+    gc, _ = get_gspread_client()
+    if not gc: return None
+    try:
+        sh = gc.open(MASTER_SPREADSHEET_NAME)
+        # lastUpdateTime berisi string timestamp kapan file terakhir diedit
+        return sh.lastUpdateTime 
+    except:
+        return datetime.now().strftime("%Y-%m-%d %H") # Fallback jika gagal
+
+# 2. Fungsi Berat: Generate PDF
+# HAPUS ttl=300. Sekarang kita andalkan parameter 'data_timestamp'
+# Cache hanya akan invalid jika 'cache_ver' berubah (klik tombol) ATAU 'data_timestamp' berubah (edit sheet)
+@st.cache_data(show_spinner="Memproses Data Terbaru...") 
+def get_hidden_sheet_as_pdf(tool_code, cache_ver, data_timestamp):
     try:
         gc, creds = get_gspread_client()
         if not gc: return None, "Koneksi Google Gagal"
@@ -126,94 +175,135 @@ def get_hidden_sheet_as_pdf(tool_code, cache_ver):
 
 LAUNCHER_SCRIPT = os.path.join(BIN_DIR, "run_with_curtain.py")
 
-# --- CSS STYLING (GABUNGAN: BOX BETUL + HEADER FULL) ---
-st.markdown("""
+# --- CSS STYLING ---
+st.markdown(f"""
     <style>
-        .stApp { background-color: #000000; }
+        @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&display=swap');
+
+        .stApp {{ background-color: #000000; }}
         
-        /* 1. MENGATUR CONTAINER UTAMA (HEADER FULL) */
-        .block-container { 
+        .block-container {{ 
             padding-top: 0rem !important; 
             padding-left: 1rem !important;     
             padding-right: 1rem !important;    
+            padding-bottom: 0rem !important;
             max-width: 100vw !important;       
-        }
+        }}
         
-        header { display: none; }
+        header {{ display: none; }}
+        footer {{ display: none !important; }}
 
-        /* 2. HEADER IMAGE FULL WIDTH (JURUS NEGATIVE MARGIN) */
-        .visual-header {
+        /* HEADER IMAGE */
+        .visual-header {{
             background-repeat: repeat-x; background-size: auto 100%; background-position: center top; 
             height: 250px; 
-            
-            /* Trik Full Width: Lebar 100% + kompensasi padding */
             width: calc(100% + 2rem); 
+            margin-top: -15px !important;
             margin-left: -1rem; 
             margin-right: -1rem;
-            
             display: flex; flex-direction: row; justify-content: center; 
-            align-items: center; gap: 30px; 
+            align-items: center; gap: 20px; 
             border-bottom: 4px solid #FFD700; margin-bottom: 30px;
-        }
+        }}
 
-        /* 3. TARGET KARTU ALAT (VERSI YANG SUDAH BETUL) */
-        /* Menggunakan selector :has(> .element-container .tool-title) */
-        /* Ini adalah script yang Bapak bilang "ini bisa, sudah betul" */
-        div[data-testid="stVerticalBlock"]:has(> .element-container .tool-title) {
+        /* TYPOGRAPHY */
+        .batik-title-text {{ 
+            font-family: 'Playfair Display', 'Times New Roman', serif; 
+            font-size: 2.5rem; color: #FFFFFF; font-weight: 700; 
+            margin-top: 5px; margin-bottom: 0; line-height: 1.1;
+            text-shadow: 2px 2px 5px #000000;
+        }}
+        .airnav-sub {{ 
+            font-family: 'Times New Roman', serif; font-size: 1.8rem; 
+            color: #FFD700; margin-top: 0px; text-shadow: 1px 1px 3px #000000;
+        }}
+        .header-logo {{ height: 130px; width: auto; object-fit: contain; margin-top: 0px; }}
+
+        /* BOX STYLE */
+        div[data-testid="stVerticalBlock"]:has(> .element-container .tool-title) {{
             border: 3px solid #666 !important;    
             border-radius: 15px !important;       
             background-color: #121212 !important; 
             box-shadow: 0 10px 30px rgba(0,0,0, 0.9), 0 0 8px rgba(255,255,255, 0.15) !important;
-            
             padding: 20px !important;
             margin-bottom: 25px !important;
             gap: 15px !important;
-        }
+        }}
 
-        /* JUDUL */
-        .tool-title { 
+        .tool-title {{ 
             color: #ffffff; font-size: 1.6rem; font-weight: 700; 
             margin-bottom: 15px; text-align: center; display: block; 
             border-bottom: 2px solid #FFD700; padding-bottom: 10px;
             text-transform: uppercase; letter-spacing: 1px;
-        }
+        }}
+
+        /* BUTTON STYLE (RUN) */
+        .stButton button {{
+            background-color: #222 !important;
+            border: 1px solid #555 !important;
+            color: white !important;
+            font-weight: 700 !important;
+            height: 55px !important;
+            border-radius: 6px !important;
+            transition: all 0.2s ease !important;
+        }}
+        .stButton button:hover {{
+            border-color: #FFD700 !important;
+            color: #FFD700 !important;
+            background-color: #333 !important;
+            font-weight: 900 !important; 
+            transform: scale(1.02);
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.2);
+        }}
+
+        /* REFRESH BUTTON */
+        div[data-testid="stVerticalBlock"]:has(> .element-container .tool-title) [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:nth-child(3) button {{
+            background-image: url("data:image/png;base64,{refresh_icon_b64}");
+            background-size: 48px 48px !important; 
+            background-repeat: no-repeat;
+            background-position: center;
+            border: none !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+            color: transparent !important;
+            height: 55px; width: 100%;
+            transition: transform 0.2s ease;
+            position: relative;
+        }}
         
-        /* CLEAN EXPANDER */
-        div[data-testid="stExpander"] {
+        div[data-testid="stVerticalBlock"]:has(> .element-container .tool-title) [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:nth-child(3) button:hover {{
+            transform: scale(1.25) !important; 
+            background-color: transparent !important; 
             border: none !important;
             box-shadow: none !important;
-            background-color: transparent !important;
-        }
-        .streamlit-expanderHeader {
-            background-color: transparent !important;
-            border-bottom: 1px solid #444 !important; 
-            color: #ccc !important;
-        }
+            color: transparent !important;
+            font-weight: normal !important;
+        }}
 
-        /* TOMBOL */
-        .stButton button { 
-            border-radius: 6px; font-weight: 700; height: 45px; width: 100%; 
-            border: 1px solid #555; background-color: #222; color: white;
-            transition: all 0.2s;
-        }
-        .stButton button:hover {
-            border-color: #FFD700; color: #FFD700; background-color: #333;
-        }
+        /* TOOLTIP REFRESH */
+        div[data-testid="stVerticalBlock"]:has(> .element-container .tool-title) [data-testid="stHorizontalBlock"] [data-testid="stColumn"]:nth-child(3) button:hover::after {{
+            content: "Muat Ulang Data";
+            position: absolute; bottom: -35px; left: 50%; transform: translateX(-50%) scale(0.8);
+            background-color: #333; color: #FFD700; padding: 4px 8px; border-radius: 4px;
+            font-size: 10px; font-family: sans-serif; white-space: nowrap; border: 1px solid #555;
+            z-index: 999; pointer-events: none;
+        }}
         
-        .header-logo { height: 160px; width: auto; object-fit: contain; }
-        .text-container { display: flex; flex-direction: column; text-align: left; }
-        .batik-title-text { font-size: 2.8rem; color: #FFFFFF; font-weight: 700; margin: 0; line-height: 1.2;}
-        .airnav-sub { font-family: 'Times New Roman', serif; font-size: 2.2rem; color: #FFD700; margin-top: 5px; }
-        section[data-testid="stSidebar"] { display: none; }
+        div[data-testid="stExpander"] {{ border: none !important; box-shadow: none !important; background-color: transparent !important; }}
+        .streamlit-expanderHeader {{ background-color: transparent !important; border-bottom: 1px solid #444 !important; color: #ccc !important; }}
+        
+        .footer-credit {{
+            text-align: left; color: #666; font-size: 0.8rem;
+            margin-top: 50px; margin-bottom: 0px !important; padding-bottom: 5px;
+            margin-left: 10px; font-family: monospace; letter-spacing: 1px; opacity: 0.6;
+        }}
+        
+        .text-container {{ display: flex; flex-direction: column; text-align: left; }}
+        section[data-testid="stSidebar"] {{ display: none; }}
+        
+        h3 {{ color: #FFFFFF !important; font-family: 'Segoe UI', sans-serif; margin-bottom: 15px !important; }}
     </style>
 """, unsafe_allow_html=True)
-
-# --- HELPER FUNCTIONS ---
-@st.cache_data
-def get_img_as_base64(file_path):
-    if not os.path.exists(file_path): return ""
-    with open(file_path, "rb") as f: data = f.read()
-    return base64.b64encode(data).decode()
 
 def find_evidence_file(tool_code, date, extension_list):
     dstr = date.strftime("%Y%m%d")
@@ -241,7 +331,6 @@ def find_evidence_file(tool_code, date, extension_list):
         return candidates[0]
     return None
 
-# --- LOGIC SWITCH WINDOW ---
 def switch_to_app(tool_code):
     target_keyword = ""
     if tool_code == "DVOR": target_keyword = "MARU 220"
@@ -265,7 +354,6 @@ def switch_to_app(tool_code):
     except Exception as e:
         print(f"Focus Error: {e}")
 
-# --- CALLBACK FUNCTIONS ---
 def on_click_run(script, args, tool_code):
     switch_to_app(tool_code)
     try:
@@ -287,23 +375,19 @@ def on_click_refresh(tool_code):
     st.session_state.cache_versions[tool_code] += 1
     st.toast("Memuat ulang data...", icon="🔄")
 
-# --- RENDER TOOL CARD (DENGAN SPACER) ---
-# Menggunakan 'pad_height' untuk menyamakan tinggi Box TANPA mengubah PDF Config
 def render_tool_card(tool_name, tool_code, script, args, is_ils=True, pad_height=0):
-    # [RESTORED] Konfigurasi PDF Asli (GP 400, DME 425)
-    cfg = {
-        "LOC":  {"w": 530, "h": 560}, 
-        "GP":   {"w": 530, "h": 400}, # Tetap 400 (sesuai request)
-        "MM":   {"w": 530, "h": 210},
-        "OM":   {"w": 530, "h": 210},
-        "DVOR": {"w": 530, "h": 480},
-        "DME":  {"w": 530, "h": 425}  # Tetap 425 (sesuai request)
-    }.get(tool_code, {"w": 530, "h": 500})
-    
+    cfg = {"LOC":{"w":530,"h":560},"GP":{"w":530,"h":400},"MM":{"w":530,"h":210},"OM":{"w":530,"h":210},"DVOR":{"w":530,"h":480},"DME":{"w":530,"h":425}}.get(tool_code, {"w":530,"h":500})
     W_PX, H_PX = f"{cfg['w']}px", f"{cfg['h']}px"
     
     current_version = st.session_state.cache_versions[tool_code]
-    pdf_b64, err_msg = get_hidden_sheet_as_pdf(tool_code, current_version)
+    
+    # [SMART CACHE CALL]
+    # Ambil timestamp data terbaru. Jika belum 60 detik, pakai cache ringan.
+    # Jika timestamp sama dengan cache sebelumnya, fungsi PDF (berat) tidak akan jalan.
+    latest_data_time = get_last_data_update()
+    
+    # Panggil fungsi PDF dengan kunci tambahan (timestamp)
+    pdf_b64, err_msg = get_hidden_sheet_as_pdf(tool_code, current_version, latest_data_time)
     
     evidence_file = None
     if not is_ils: 
@@ -311,23 +395,21 @@ def render_tool_card(tool_name, tool_code, script, args, is_ils=True, pad_height
     else:
         evidence_file = find_evidence_file(tool_code, datetime.now(), ('.png', '.jpg', '.jpeg'))
 
-    # === CARD CONTAINER ===
     with st.container():
-        # 1. Judul
         st.markdown(f'<div class="tool-title">{tool_name}</div>', unsafe_allow_html=True)
         
-        # 2. Tombol
-        b1, b2 = st.columns([3, 1]) 
-        with b1: 
+        c_left, c_center, c_right = st.columns([1, 4, 1]) 
+        
+        with c_left: st.empty()
+        with c_center: 
             st.button(f"RUN {tool_code}", key=f"run_{tool_code}", use_container_width=True, 
                       on_click=on_click_run, args=(script, args, tool_code))
-        with b2: 
-            st.button("🔄", key=f"ref_{tool_code}", use_container_width=True,
+        with c_right: 
+            st.button(" ", key=f"ref_{tool_code}", use_container_width=True,
                       on_click=on_click_refresh, args=(tool_code,))
         
         st.write("") 
 
-        # 3. PDF Display
         if pdf_b64:
             st.markdown(f"""
                 <div style="display: flex; justify-content: center; width: 100%;">
@@ -344,12 +426,9 @@ def render_tool_card(tool_name, tool_code, script, args, is_ils=True, pad_height
             if err_msg: st.warning(f"⚠️ {err_msg}")
             else: st.info("Loading Data...")
 
-        # --- SPACER UNTUK RATA TINGGI ---
-        # Menambahkan ruang kosong di bawah PDF agar tinggi box sama dengan tetangganya
         if pad_height > 0:
             st.markdown(f'<div style="height: {pad_height}px;"></div>', unsafe_allow_html=True)
 
-        # 4. Evidence Spoiler
         st.write("")
         with st.expander("📸 Lihat Evidence"):
             if evidence_file:
@@ -364,11 +443,9 @@ def render_tool_card(tool_name, tool_code, script, args, is_ils=True, pad_height
                 st.info("Belum ada evidence.")
 
 # --- HEADER SECTION ---
-header_bg = get_img_as_base64("background_lite.jpg") or get_img_as_base64("background.png")
-logo_img = get_img_as_base64("logo.png")
 st.markdown(f"""
-    <div class="visual-header" style="background-image: url('data:image/jpg;base64,{header_bg}');">
-        <img src="data:image/png;base64,{logo_img}" class="header-logo">
+    <div class="visual-header" style="background-image: url('data:image/jpg;base64,{header_bg_b64}');">
+        <img src="data:image/png;base64,{logo_b64}" class="header-logo">
         <div class="text-container">
             <div class="batik-title-text">Buku Catatan Elektronik</div>
             <div class="airnav-sub">AirNav Solo</div>
@@ -388,11 +465,15 @@ with st.container():
     
     st.write("")
     
-    st.markdown("### 📡 INSTRUMENT LANDING SYSTEM (ILS)")
-    c1, c2 = st.columns(2) 
+    # HEADER ILS (ICON 80px)
+    st.markdown(f"""
+        <div style="display:flex; align-items:center; gap:20px; margin-bottom: 5px;">
+            <img src="data:image/png;base64,{ils_icon_b64}" width="80" height="80">
+            <h3 style="margin:0; padding:0; color:white; font-size: 1.8rem;">INSTRUMENT LANDING SYSTEM (ILS)</h3>
+        </div>
+    """, unsafe_allow_html=True)
     
-    # === PADDING DISESUAIKAN (LOC=560, GP=400 + 160) ===
-    # GP ditambah ganjalan 160px agar total tinggi isinya = 560px (sama dengan LOC)
+    c1, c2 = st.columns(2) 
     with c1: render_tool_card("Localizer", "LOC", "bin/robot_pmdt.py", ["--target", "LOC"], is_ils=True)
     with c2: render_tool_card("Glidepath", "GP", "bin/robot_pmdt.py", ["--target", "GP"], is_ils=True, pad_height=160)
     
@@ -400,12 +481,22 @@ with st.container():
     with c3: render_tool_card("Middle Marker", "MM", "bin/robot_pmdt.py", ["--target", "MM"], is_ils=True)
     with c4: render_tool_card("Outer Marker", "OM", "bin/robot_pmdt.py", ["--target", "OM"], is_ils=True)
     
-    st.markdown("### 📡 NAVIGASI UDARA (DVOR & DME)")
-    c5, c6 = st.columns(2)
+    # DIVIDER GOLD
+    st.markdown("""<hr style="height:2px;border:none;color:#FFD700;background-color:#FFD700; margin-top: 40px; margin-bottom: 40px;" /> """, unsafe_allow_html=True)
+
+    # HEADER DVOR (ICON 80px)
+    st.markdown(f"""
+        <div style="display:flex; align-items:center; gap:20px; margin-bottom: 5px;">
+            <img src="data:image/png;base64,{dvor_icon_b64}" width="80" height="80">
+            <h3 style="margin:0; padding:0; color:white; font-size: 1.8rem;">NAVIGASI UDARA (DVOR & DME)</h3>
+        </div>
+    """, unsafe_allow_html=True)
     
-    # === PADDING DISESUAIKAN (DVOR=480, DME=425 + 55) ===
-    # DME ditambah ganjalan 55px agar total tinggi isinya = 480px (sama dengan DVOR)
+    c5, c6 = st.columns(2)
     with c5: render_tool_card("DVOR", "DVOR", "bin/robot_maru.py", ["--DVOR"], is_ils=False)
     with c6: render_tool_card("DME", "DME", "bin/robot_maru.py", ["--DME"], is_ils=False, pad_height=55)
     
     st.markdown("<br><br>", unsafe_allow_html=True)
+
+# --- CREDIT FOOTER (STATIC) ---
+st.markdown('<div class="footer-credit">Designed by <b>EBS</b></div>', unsafe_allow_html=True)
